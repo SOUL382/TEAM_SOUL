@@ -20,4 +20,4 @@
 .team-directory-card strong{font-size:13px;letter-spacing:.2px}
 .team-directory-mark{flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;background:#26351c;border:1px solid #536c32;border-radius:7px;color:var(--lime);font-weight:900}
 
-.team-directory-logo{flex:0 0 42px;width:42px;height:42px;object-fit:contain;border-radius:7px;background:#fff;padding:2px}
+.team-directory-logo{flex:0 0 32px;width:32px;height:32px;aspect-ratio:1;object-fit:contain;border-radius:6px;background:#0b121a;border:1px solid var(--line);padding:3px;display:block}
