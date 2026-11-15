@@ -347,19 +347,28 @@ def qualification():
         scheduled_count = db.execute(
             "SELECT COUNT(*) FROM scheduled_matches WHERE tournament_id=?", (tid,)
         ).fetchone()[0]
-        completed = db.execute("""
-            SELECT match_number FROM results WHERE tournament_id=?
-            GROUP BY match_number HAVING COUNT(DISTINCT team_name) >= ?
-        """, (tid, len(teams))).fetchall() if teams else []
+        match_rows = db.execute(
+            "SELECT match_number, team_name FROM results WHERE tournament_id=?",
+            (tid,)
+        ).fetchall()
+        teams_by_match = {}
+        for row in match_rows:
+            teams_by_match.setdefault(row["match_number"], set()).add(row["team_name"].casefold())
+        registered = {name.casefold() for name in teams}
+        complete_matches = sum(1 for names in teams_by_match.values()
+                               if registered and registered.issubset(names))
         rows = db.execute("""
-            SELECT team_name, SUM(kills) AS kills,
-                   SUM(placement_points) AS placement_points,
-                   SUM(kills+placement_points) AS total_points
-            FROM results WHERE tournament_id=?
-            GROUP BY team_name
-            ORDER BY total_points DESC, kills DESC, placement_points DESC, team_name COLLATE NOCASE
+            SELECT t.name AS team_name,
+                   COALESCE(SUM(r.kills), 0) AS kills,
+                   COALESCE(SUM(r.placement_points), 0) AS placement_points,
+                   COALESCE(SUM(r.kills+r.placement_points), 0) AS total_points
+            FROM teams t
+            LEFT JOIN results r ON r.tournament_id=t.tournament_id
+                AND r.team_name=t.name COLLATE NOCASE
+            WHERE t.tournament_id=?
+            GROUP BY t.id,t.name
+            ORDER BY total_points DESC, kills DESC, placement_points DESC, t.name COLLATE NOCASE
         """, (tid,)).fetchall()
-    complete_matches = len(completed)
     required = scheduled_count or 12
     locked = bool(teams) and complete_matches >= required
     ranked = [dict(r, rank=i+1) for i,r in enumerate(rows)]
@@ -368,106 +377,8 @@ def qualification():
         "required_matches": required,
         "locked": locked,
         "tiebreaker": "Total points, then kills, then placement points, then team name",
-        "qualified": ranked[:6] if locked else []
+        "qualified": ranked[:6],
+        "provisional": not locked
     })
 
-@app.route("/api/results/<int:result_id>", methods=["PATCH", "DELETE"])
-@admin_required
-def edit_result(result_id):
-    with connect_db() as db:
-        if request.method == "DELETE":
-            cur = db.execute("DELETE FROM results WHERE id=?", (result_id,))
-            if not cur.rowcount:
-                return error("Result not found", 404)
-            return jsonify({"ok": True})
-        data = request.get_json(silent=True) or {}
-        fields = {}
-        for key in ("match_number", "placement", "kills", "placement_points"):
-            if key in data:
-                fields[key] = int(data[key])
-        for key in ("map_name", "team_name"):
-            if key in data:
-                fields[key] = str(data[key]).strip()
-        if not fields:
-            return error("No score fields supplied")
-        if any(v < 0 for k, v in fields.items() if k in ("kills", "placement_points")):
-            return error("Points and kills cannot be negative")
-        sql = ", ".join(f"{k}=?" for k in fields)
-        cur = db.execute(f"UPDATE results SET {sql} WHERE id=?", (*fields.values(), result_id))
-        if not cur.rowcount:
-            return error("Result not found", 404)
-    return jsonify({"ok": True})
 
-@app.route("/api/schedule")
-def get_schedule():
-    tid = request.args.get("tournament_id", type=int)
-    if not tid:
-        return error("tournament_id is required")
-    with connect_db() as db:
-        rows = db.execute("""SELECT match_number,match_date,map_name,start_time_trt,start_time_ist
-            FROM scheduled_matches WHERE tournament_id=? ORDER BY match_number""", (tid,)).fetchall()
-    return jsonify([dict(r) for r in rows])
-
-@app.route("/api/standings")
-def standings():
-    tid = request.args.get("tournament_id", type=int)
-    if not tid:
-        return error("tournament_id is required")
-    with connect_db() as db:
-        rows = db.execute("""
-          SELECT t.id AS team_id, t.name AS team_name, t.highlighted,
-            COALESCE(COUNT(DISTINCT r.match_number),0) AS matches_played,
-            COALESCE(SUM(r.kills),0) AS total_kills,
-            COALESCE(SUM(r.placement_points),0) AS placement_points,
-            COALESCE(SUM(r.kills+r.placement_points),0) AS total_points
-          FROM teams t LEFT JOIN results r
-            ON r.tournament_id=t.tournament_id AND r.team_name=t.name
-          WHERE t.tournament_id=?
-          GROUP BY t.id,t.name,t.highlighted
-          ORDER BY total_points DESC,total_kills DESC,t.name ASC
-        """, (tid,)).fetchall()
-        # Include teams that have scores but were not pre-registered.
-        extras = db.execute("""
-          SELECT NULL AS team_id, r.team_name, 0 AS highlighted,
-            COUNT(DISTINCT r.match_number) AS matches_played,
-            SUM(r.kills) AS total_kills, SUM(r.placement_points) AS placement_points,
-            SUM(r.kills+r.placement_points) AS total_points
-          FROM results r LEFT JOIN teams t
-            ON t.tournament_id=r.tournament_id AND t.name=r.team_name
-          WHERE r.tournament_id=? AND t.id IS NULL GROUP BY r.team_name
-        """, (tid,)).fetchall()
-    combined = [dict(r) for r in rows] + [dict(r) for r in extras]
-    combined.sort(key=lambda r: (-r["total_points"], -r["total_kills"], r["team_name"].lower()))
-    for i, row in enumerate(combined, 1):
-        row["rank"] = i
-    return jsonify(combined)
-
-@app.route("/api/login", methods=["POST"])
-def login():
-    data = request.get_json(silent=True) or {}
-    supplied = str(data.get("password", ""))
-    password = os.environ.get("ADMIN_PASSWORD")
-    password_hash = os.environ.get("ADMIN_PASSWORD_HASH")
-    valid = (password is not None and supplied == password) or (
-        password_hash is not None and check_password_hash(password_hash, supplied))
-    if not valid:
-        return error("Incorrect password, or admin password is not configured", 401)
-    session["admin"] = True
-    return jsonify({"ok": True})
-
-@app.route("/api/session")
-def session_status():
-    return jsonify({"admin": bool(session.get("admin"))})
-
-@app.route("/api/logout", methods=["POST"])
-def logout():
-    session.clear()
-    return jsonify({"ok": True})
-
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
-
-init_db()
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
