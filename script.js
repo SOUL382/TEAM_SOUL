@@ -22,6 +22,16 @@ async function loadSmashRule(t){
  $('smashStatus').innerHTML=status+'<p class="muted">Match Point threshold = leading team’s total after Match 12 + 10. Tiebreaker: '+esc(q.tiebreaker)+'.</p>';
  if(q.champion){$('smashEligible').innerHTML='';return}
  $('smashEligible').innerHTML=q.threshold===null?'<article class="result-card"><h3>Waiting for Match 12</h3><p class="muted">Enter complete results for all 16 teams in Match 12 to calculate the threshold.</p></article>':(q.eligible_teams.length?q.eligible_teams.map(t=>'<article class="result-card"><div class="eyebrow">MATCH POINT ELIGIBLE</div><h3>'+esc(t.team_name)+'</h3><div>Total points: <strong>'+t.total_points+'</strong></div></article>').join(''):'<article class="result-card"><h3>No eligible teams yet</h3><p class="muted">Eligibility will update after each completed match.</p></article>');
+ const mapState=await api('/api/grand-finals-map-selection?tournament_id='+t.id);
+ if(!mapState.match_18_complete){
+  $('smashMapSelection').innerHTML='<h3>Waiting for Match 18</h3><p class="muted">'+mapState.complete_matches+' / 18 matches completed. The Match 19 map selection will appear after all 16 teams’ Match 18 results are recorded.</p>';
+ }else if(mapState.selection){
+  const s=mapState.selection, leader=mapState.leader_after_match_18;
+  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 19 MAP CONFIRMED</div><h3>'+esc(s.selected_map)+'</h3><p>Erangel Showmatch winner: <strong>'+esc(s.showmatch_winner)+'</strong></p><p>Map banned: <strong>'+esc(s.banned_map)+'</strong></p><p>Map selected by Match 18 leader: <strong>'+esc(leader.team_name)+'</strong></p>';
+ }else{
+  const leader=mapState.leader_after_match_18;
+  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after Match 18.</p><p class="muted">Waiting for the Erangel Showmatch winner, their map ban and the leader’s Match 19 map selection to be entered by an admin.</p>';
+ }
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 $('tournamentSelect').addEventListener('change',loadBoard);loadTournaments();
