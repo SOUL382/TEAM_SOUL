@@ -206,6 +206,10 @@ def team_logo_file(filename):
 def home():
     return send_from_directory(BASE_DIR, "index.html")
 
+@app.route("/grand-finals-history")
+def grand_finals_history_page():
+    return send_from_directory(BASE_DIR, "grand-finals-history.html")
+
 @app.route("/admin")
 def admin_page():
     return send_from_directory(BASE_DIR, "admin.html")
