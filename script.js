@@ -153,35 +153,6 @@ function renderMatchCentre(results,tournament){
   const wins=soul.filter(r=>Number(r.placement)===1).length;
   $('matchCentreSoul').innerHTML=soul.length?'<div class="soul-total">'+(soulKills+soulPlacement)+' <span>total points</span></div><div class="match-centre-metrics"><span>Kills <b>'+soulKills+'</b></span><span>Placement pts <b>'+soulPlacement+'</b></span><span>Matches <b>'+soul.length+'</b></span><span>WWCDs <b>'+wins+'</b></span><span>Best finish <b>#'+best+'</b></span><span>Avg points <b>'+((soulKills+soulPlacement)/soul.length).toFixed(1)+'</b></span></div><p class="muted">Tournament totals update automatically as results are entered.</p>':'<p class="muted">Team SouL results will appear here once recorded.</p>';
  
- const historySection=$('soulFinalsHistorySection');
- if(historySection){
-  const isGrandFinals=!!tournament&&tournament.name==='PMGC 2026 - Grand Finals';
-  historySection.style.display=isGrandFinals?'':'none';
-  const historyJump=$('grandFinalsHistoryJump');
-  if(historyJump)historyJump.style.display=isGrandFinals?'inline-flex':'none';
-  if(isGrandFinals){
-   const matchRows=[];
-   let runningTotal=0;
-   for(let n=1;n<=19;n++){
-    const entry=results.find(r=>Number(r.match_number)===n&&String(r.team_name).toLowerCase()==='team soul');
-    if(entry){
-     const kills=Number(entry.kills||0),placementPts=Number(entry.placement_points||0),points=kills+placementPts;
-     runningTotal+=points;
-     matchRows.push('<tr><td class="rank">'+n+'</td><td>'+esc(entry.map_name||'Map TBA')+'</td><td>#'+Number(entry.placement)+'</td><td>'+kills+'</td><td>'+placementPts+'</td><td class="points">'+points+'</td><td><strong>'+runningTotal+'</strong></td></tr>');
-    }else{
-     matchRows.push('<tr class="history-pending"><td class="rank">'+n+'</td><td>—</td><td colspan="4">Awaiting results</td><td>'+(runningTotal||'—')+'</td></tr>');
-    }
-   }
-   const completed=results.filter(r=>String(r.team_name).toLowerCase()==='team soul').length;
-   $('soulFinalsHistory').innerHTML='<table class="soul-history-table"><thead><tr><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACE PTS</th><th>MATCH PTS</th><th>RUNNING TOTAL</th></tr></thead><tbody>'+matchRows.join('')+'</tbody></table>';
-   const existing=$('soulFinalsHistory').parentElement.querySelector('.soul-history-note');
-   if(existing)existing.remove();
-   const note=document.createElement('p');
-   note.className='muted soul-history-note';
-   note.textContent=completed+' / 19 matches recorded for Team SouL.';
-   $('soulFinalsHistory').after(note);
-  }
- }
  const mapGroups={};
   results.forEach(r=>{const map=r.map_name||'Unknown';if(!mapGroups[map])mapGroups[map]={matches:new Set(),points:0,wins:0,teams:new Set()};const g=mapGroups[map];g.matches.add(Number(r.match_number));g.points+=Number(r.kills||0)+Number(r.placement_points||0);g.teams.add(r.team_name);if(Number(r.placement)===1)g.wins++});
   const mapHtml=Object.entries(mapGroups).sort((a,b)=>b[1].matches.size-a[1].matches.size).map(([map,g])=>'<div class="map-stat-row"><span><b>'+esc(map)+'</b><small>'+g.matches.size+' match'+(g.matches.size===1?'':'es')+'</small></span><strong>'+g.wins+' WWCD</strong><strong>'+(g.points/Math.max(1,g.teams.size)).toFixed(1)+' avg pts</strong></div>').join('');
