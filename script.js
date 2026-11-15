@@ -39,14 +39,18 @@ async function loadSmashRule(t){
 async function loadTeamDirectory(){
  const meta=$('teamDirectoryMeta'),grid=$('teamDirectoryGrid');
  if(!meta||!grid)return;
- try{
-  const tournaments=await api('/api/tournaments');
-  const master=tournaments.find(t=>t.name==='PMGC 2026');
-  if(!master){meta.textContent='The PMGC 2026 master team board is not available yet.';grid.innerHTML='';return;}
-  const teams=await api('/api/teams?tournament_id='+master.id);
-  meta.textContent=teams.length+' teams registered · Team names only, with no scores or ranking.';
-  grid.innerHTML=teams.map(team=>'<article class="team-directory-card"><span class="team-directory-mark">S</span><strong>'+esc(team.name)+'</strong></article>').join('')||'<div class="empty">No teams have been added yet.</div>';
- }catch(e){meta.textContent='Could not load the team directory: '+e.message;grid.innerHTML='';}
+ const teams=[
+  'AK Gold Esports','Sharper Esports','4Thrives','The MongolZ','Aurora Gaming',
+  '4K Esports','iKURD Esports','S2G Esports','Gaming Stars Esports','Hustler Crew',
+  'Wolves Esports','RoW Esports','XForce Rejects','All Gamers','Team SouL',
+  'Nongshim RedForce','Bigetron by Vitality','eArena','Team Flash','Horaa Esports',
+  'Trained to Kill','OLD NOT','GOAT TEAM','AlUla Club Esports','Geekay Esports',
+  'Nigma Galaxy','R8 Esports','Selibon Esports','BUF Esports','BRX MSM Esports',
+  '3Boars Gaming','FURIA Esports','Alpha7 Esports','Weibo Gaming','LGD Gaming',
+  'DRX','VARREL','Dplus KIA','ULF Esports'
+ ];
+ meta.textContent=teams.length+' teams · PMGC 2026 team directory · Names only, no scores or ranking.';
+ grid.innerHTML=teams.map(name=>'<article class="team-directory-card"><span class="team-directory-mark">S</span><strong>'+esc(name)+'</strong></article>').join('');
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 $('tournamentSelect').addEventListener('change',loadBoard);loadTournaments();loadTeamDirectory();
