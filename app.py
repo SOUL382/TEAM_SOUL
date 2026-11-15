@@ -198,6 +198,10 @@ def admin_required(fn):
 def error(message, status=400):
     return jsonify({"error": message}), status
 
+@app.route("/static/images/teams/<path:filename>")
+def team_logo_file(filename):
+    return send_from_directory(os.path.join(BASE_DIR, "static", "images", "teams"), filename)
+
 @app.route("/")
 def home():
     return send_from_directory(BASE_DIR, "index.html")
