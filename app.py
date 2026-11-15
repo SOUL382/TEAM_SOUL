@@ -206,6 +206,10 @@ def team_logo_file(filename):
 def home():
     return send_from_directory(BASE_DIR, "index.html")
 
+@app.route("/google9f56001cc4f92e87.html")
+def google_site_verification():
+    return send_from_directory(BASE_DIR, "google9f56001cc4f92e87.html", mimetype="text/html")
+
 @app.route("/robots.txt")
 def robots_file():
     return send_from_directory(BASE_DIR, "robots.txt", mimetype="text/plain")
