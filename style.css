@@ -140,3 +140,9 @@ html{scroll-behavior:smooth}
 .soul-history-table .history-pending td{color:var(--muted);font-style:italic}
 .soul-history-note{margin:9px 2px 0}
 @media(max-width:500px){.soul-history-table th,.soul-history-table td{padding:9px 8px;font-size:10px}}
+
+/* Quick jump from Match Centre to Grand Finals history */
+.history-jump{align-items:center;justify-content:center;padding:10px 13px;border:1px solid var(--lime);border-radius:5px;color:var(--lime);font-size:10px;font-weight:900;letter-spacing:1px;white-space:nowrap}
+.history-jump:hover{background:#26351c}
+#soulFinalsHistorySection{scroll-margin-top:22px}
+@media(max-width:500px){.history-jump{padding:9px 10px;font-size:9px}.section-head:has(.history-jump){align-items:center;flex-direction:row}}
