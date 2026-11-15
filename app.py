@@ -125,6 +125,48 @@ def init_db():
                             VALUES(?,?,?,?,?,?)""",
                             (group_id, match_no, match_date, "TBA", "TBA", "TBA"))
 
+        # Seed Last Chance and Grand Finals as independent stage scoreboards.
+        stage_rosters = {
+            "PMGC 2026 - Last Chance": (
+                [f"Red Group #{rank}" for rank in range(4, 12)] +
+                [f"Green Group #{rank}" for rank in range(4, 12)]
+            ),
+            "PMGC 2026 - Grand Finals": (
+                ["Host Country Invitee"] +
+                [f"Gauntlet Qualifier #{rank}" for rank in range(1, 7)] +
+                [f"Group Stage Qualifier #{rank}" for rank in range(1, 7)] +
+                [f"Last Chance Qualifier #{rank}" for rank in range(1, 4)]
+            )
+        }
+        for stage_name, roster in stage_rosters.items():
+            stage_row = db.execute("SELECT id FROM tournaments WHERE name=?", (stage_name,)).fetchone()
+            if stage_row:
+                stage_id = stage_row["id"]
+            else:
+                stage_cur = db.execute(
+                    "INSERT INTO tournaments(name,game,status) VALUES(?,?,?)",
+                    (stage_name, "BGMI", "Upcoming")
+                )
+                stage_id = stage_cur.lastrowid
+            for team_name in roster:
+                db.execute(
+                    "INSERT OR IGNORE INTO teams(tournament_id,name) VALUES(?,?)",
+                    (stage_id, team_name)
+                )
+            if not db.execute("SELECT 1 FROM scheduled_matches WHERE tournament_id=? LIMIT 1", (stage_id,)).fetchone():
+                if "Last Chance" in stage_name:
+                    stage_days = [("2026-12-05", 6), ("2026-12-06", 6)]
+                else:
+                    stage_days = [("2026-12-11", 6), ("2026-12-12", 6), ("2026-12-13", 7)]
+                match_no = 1
+                for match_date, matches_that_day in stage_days:
+                    for _ in range(matches_that_day):
+                        db.execute("""INSERT INTO scheduled_matches
+                            (tournament_id,match_number,match_date,map_name,start_time_trt,start_time_ist)
+                            VALUES(?,?,?,?,?,?)""",
+                            (stage_id, match_no, match_date, "TBA", "TBA", "TBA"))
+                        match_no += 1
+
         if not db.execute("SELECT 1 FROM scheduled_matches WHERE tournament_id=? LIMIT 1", (gauntlet_id,)).fetchone():
             maps = ["Rondo", "Erangel", "Erangel", "Erangel", "Miramar", "Miramar"]
             times_trt = ["15:00", "15:40", "16:20", "17:00", "17:40", "18:20"]
