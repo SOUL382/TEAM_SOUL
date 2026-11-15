@@ -381,4 +381,114 @@ def qualification():
         "provisional": not locked
     })
 
+@app.route("/api/session")
+def session_status():
+    return jsonify({"admin": bool(session.get("admin"))})
 
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    password = os.environ.get("ADMIN_PASSWORD")
+    password_hash = os.environ.get("ADMIN_PASSWORD_HASH")
+    supplied = str(data.get("password", ""))
+    valid = (
+        password is not None and supplied == password
+    ) or (
+        password_hash is not None and check_password_hash(password_hash, supplied)
+    )
+    if not valid:
+        return error("Invalid password or admin password not configured", 401)
+    session["admin"] = True
+    return jsonify({"ok": True})
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"ok": True})
+
+
+@app.route("/api/standings")
+def standings():
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        rows = db.execute("""
+            SELECT t.name AS team_name,
+                   t.highlighted AS highlighted,
+                   COALESCE(SUM(r.kills), 0) AS total_kills,
+                   COALESCE(SUM(r.placement_points), 0) AS placement_points,
+                   COALESCE(SUM(r.kills + r.placement_points), 0) AS total_points,
+                   COUNT(DISTINCT r.match_number) AS matches_played
+            FROM teams t
+            LEFT JOIN results r
+              ON r.tournament_id=t.tournament_id
+             AND r.team_name=t.name COLLATE NOCASE
+            WHERE t.tournament_id=?
+            GROUP BY t.id, t.name, t.highlighted
+            ORDER BY total_points DESC, total_kills DESC,
+                     placement_points DESC, t.name COLLATE NOCASE
+        """, (tid,)).fetchall()
+    return jsonify([dict(row, rank=i+1) for i, row in enumerate(rows)])
+
+
+@app.route("/api/schedule")
+def schedule():
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        rows = db.execute("""
+            SELECT match_number, match_date, map_name, start_time_trt, start_time_ist
+            FROM scheduled_matches
+            WHERE tournament_id=?
+            ORDER BY match_number
+        """, (tid,)).fetchall()
+    return jsonify([dict(row) for row in rows])
+
+
+@app.route("/api/results/<int:result_id>", methods=["PATCH", "DELETE"])
+@admin_required
+def manage_result(result_id):
+    if request.method == "DELETE":
+        with connect_db() as db:
+            cur = db.execute("DELETE FROM results WHERE id=?", (result_id,))
+            if not cur.rowcount:
+                return error("Result not found", 404)
+        return jsonify({"ok": True})
+    data = request.get_json(silent=True) or {}
+    allowed = {}
+    try:
+        for key in ("match_number", "placement", "kills", "placement_points"):
+            if key in data:
+                allowed[key] = int(data[key])
+    except (TypeError, ValueError):
+        return error("Score values must be valid numbers")
+    if not allowed:
+        return error("No score fields supplied")
+    if (allowed.get("match_number", 1) < 1 or
+        allowed.get("placement", 1) < 1 or
+        allowed.get("kills", 0) < 0 or
+        allowed.get("placement_points", 0) < 0):
+        return error("Invalid score values")
+    with connect_db() as db:
+        cur = db.execute(
+            "UPDATE results SET " + ", ".join(f"{k}=?" for k in allowed) + " WHERE id=?",
+            (*allowed.values(), result_id)
+        )
+        if not cur.rowcount:
+            return error("Result not found", 404)
+    return jsonify({"ok": True})
+
+
+@app.route("/health")
+def health():
+    return jsonify({"status": "ok"})
+
+
+init_db()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", "10000")))
