@@ -110,6 +110,21 @@ def init_db():
                     (group_id, team_name)
                 )
 
+            # Seed the confirmed 12-match Group Stage dates; maps and start times remain TBA until officially published.
+            if not db.execute("SELECT 1 FROM scheduled_matches WHERE tournament_id=? LIMIT 1", (group_id,)).fetchone():
+                group_dates = (
+                    ("2026-11-29", "2026-11-30")
+                    if "Green Group" in group_name
+                    else ("2026-12-02", "2026-12-03")
+                )
+                for day_index, match_date in enumerate(group_dates):
+                    for slot in range(6):
+                        match_no = day_index * 6 + slot + 1
+                        db.execute("""INSERT INTO scheduled_matches
+                            (tournament_id,match_number,match_date,map_name,start_time_trt,start_time_ist)
+                            VALUES(?,?,?,?,?,?)""",
+                            (group_id, match_no, match_date, "TBA", "TBA", "TBA"))
+
         if not db.execute("SELECT 1 FROM scheduled_matches WHERE tournament_id=? LIMIT 1", (gauntlet_id,)).fetchone():
             maps = ["Rondo", "Erangel", "Erangel", "Erangel", "Miramar", "Miramar"]
             times_trt = ["15:00", "15:40", "16:20", "17:00", "17:40", "18:20"]
