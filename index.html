@@ -25,6 +25,7 @@
       <a class="contents-card" href="#team-directory"><span>06</span><h3>Team Directory</h3><p>Browse all 39 teams competing in PMGC 2026.</p></a>
       <a class="contents-card" href="#live"><span>01</span><h3>Live Standings</h3><p>Tournament leaderboard and team points.</p></a>
       <a class="contents-card" href="#matches"><span>02</span><h3>Match Results</h3><p>Match-by-match placements and scores.</p></a>
+      <a class="contents-card" href="#match-centre"><span>07</span><h3>Match Centre</h3><p>Detailed match tables and Team SouL performance.</p></a>
       <a class="contents-card" href="#qualification"><span>03</span><h3>Qualification Tracker</h3><p>Follow the road to the Grand Finals.</p></a>
       <a class="contents-card" href="#grand-finals-schedule"><span>04</span><h3>Grand Finals Schedule</h3><p>All 19 matches, days and map rotation.</p></a>
       <a class="contents-card" href="#smashRule"><span>05</span><h3>Smash Rule</h3><p>Match Point race and Match 19 map selection.</p></a>
@@ -57,6 +58,21 @@
   <section class="section" id="matches">
     <div class="section-head"><div><div class="eyebrow">MATCH-BY-MATCH</div><h2>Recent results</h2></div></div>
     <div id="results" class="results-grid"><div class="empty">Select a tournament to view match results.</div></div>
+  </section>
+  <section class="section" id="match-centre">
+    <div class="section-head"><div><div class="eyebrow">DEEP-DIVE · MATCH PERFORMANCE</div><h2>Match Centre</h2></div></div>
+    <div class="match-centre-controls">
+      <label>Choose match<select id="matchCentreMatch"><option value="">Waiting for results</option></select></label>
+      <label>Team focus<select id="matchCentreTeam"><option value="ALL">All teams</option><option value="Team SouL">Team SouL</option></select></label>
+    </div>
+    <div id="matchCentreSummary" class="match-centre-summary"><div class="empty">Match insights will appear when scores are entered.</div></div>
+    <div class="match-centre-layout">
+      <div><h3 class="match-centre-subtitle">Match scoreboard</h3><div id="matchCentreTable" class="table-wrap"><div class="empty">No match data yet.</div></div></div>
+      <div class="match-centre-side">
+        <div><h3 class="match-centre-subtitle">Team SouL spotlight 💚💙</h3><div id="matchCentreSoul" class="result-card"><p class="muted">Team SouL's tournament performance will appear here.</p></div></div>
+        <div><h3 class="match-centre-subtitle">Map performance</h3><div id="matchCentreMapStats" class="result-card"><p class="muted">Map statistics will appear here.</p></div></div>
+      </div>
+    </div>
   </section>
   <section class="section" id="qualification">
     <div class="section-head"><div><div class="eyebrow">ROAD TO THE GRAND FINALS</div><h2>Top 6 qualification</h2></div></div>
