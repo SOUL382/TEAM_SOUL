@@ -58,6 +58,14 @@ def init_db():
           UNIQUE(tournament_id, match_number),
           FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS grand_finals_map_selection (
+          tournament_id INTEGER PRIMARY KEY,
+          showmatch_winner TEXT NOT NULL,
+          banned_map TEXT NOT NULL,
+          selected_map TEXT NOT NULL,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+        );
         """)
         # Upgrade databases created by the earlier tracker version.
         db.execute("CREATE INDEX IF NOT EXISTS idx_results_tournament ON results(tournament_id)")
@@ -681,6 +689,99 @@ def smash_rule():
         "status": status,
         "tiebreaker": "Total points, then kills, then placement points, then team name",
         "standings": current_board
+    })
+
+
+@app.route("/api/grand-finals-map-selection", methods=["GET", "POST"])
+def grand_finals_map_selection():
+    tid = request.args.get("tournament_id", type=int)
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        try:
+            tid = int(data.get("tournament_id"))
+        except (TypeError, ValueError):
+            return error("A valid Grand Finals tournament is required")
+        if not session.get("admin"):
+            return error("Admin login required", 401)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
+        if not tournament or tournament["name"] != "PMGC 2026 - Grand Finals":
+            return error("This tracker is only available for Grand Finals", 400)
+        teams = [r["name"] for r in db.execute(
+            "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
+        ).fetchall()]
+        rows = db.execute("""
+            SELECT match_number, team_name, placement, kills, placement_points
+            FROM results WHERE tournament_id=? AND match_number<=18
+            ORDER BY match_number, placement
+        """, (tid,)).fetchall()
+        by_match = {}
+        for row in rows:
+            by_match.setdefault(row["match_number"], []).append(dict(row))
+        registered = {name.casefold() for name in teams}
+        complete = {
+            n for n, match_rows in by_match.items()
+            if registered.issubset({r["team_name"].casefold() for r in match_rows})
+        }
+        completed_count = 0
+        while completed_count + 1 in complete:
+            completed_count += 1
+        totals = {name.casefold(): {"team_name": name, "kills": 0,
+                  "placement_points": 0, "total_points": 0} for name in teams}
+        for match_no, match_rows in by_match.items():
+            if match_no not in complete or match_no > 18:
+                continue
+            for row in match_rows:
+                item = totals.get(row["team_name"].casefold())
+                if item:
+                    item["kills"] += row["kills"]
+                    item["placement_points"] += row["placement_points"]
+                    item["total_points"] += row["kills"] + row["placement_points"]
+        leaderboard = sorted(totals.values(), key=lambda x: (
+            -x["total_points"], -x["kills"], -x["placement_points"],
+            x["team_name"].casefold()
+        ))
+        leader = leaderboard[0] if completed_count >= 18 and leaderboard else None
+        saved = db.execute(
+            "SELECT showmatch_winner,banned_map,selected_map,updated_at "
+            "FROM grand_finals_map_selection WHERE tournament_id=?", (tid,)
+        ).fetchone()
+        if request.method == "POST":
+            if len(teams) != 16:
+                return error("Grand Finals must have 16 registered teams", 400)
+            if completed_count < 18 or not leader:
+                return error("Complete all 16 team results through Match 18 before recording the map selection")
+            winner = str(data.get("showmatch_winner", "")).strip()
+            banned = str(data.get("banned_map", "")).strip()
+            selected = str(data.get("selected_map", "")).strip()
+            if not winner or not banned or not selected:
+                return error("Enter the Showmatch winner, banned map and Match 19 selected map")
+            if winner.casefold() not in registered:
+                return error("Showmatch winner must be one of the registered Grand Finals teams")
+            if banned.casefold() == selected.casefold():
+                return error("The Match 19 map cannot be the map banned by the Showmatch winner")
+            db.execute("""
+                INSERT INTO grand_finals_map_selection
+                    (tournament_id,showmatch_winner,banned_map,selected_map,updated_at)
+                VALUES(?,?,?,?,CURRENT_TIMESTAMP)
+                ON CONFLICT(tournament_id) DO UPDATE SET
+                    showmatch_winner=excluded.showmatch_winner,
+                    banned_map=excluded.banned_map,
+                    selected_map=excluded.selected_map,
+                    updated_at=CURRENT_TIMESTAMP
+            """, (tid, winner, banned, selected))
+            saved = db.execute(
+                "SELECT showmatch_winner,banned_map,selected_map,updated_at "
+                "FROM grand_finals_map_selection WHERE tournament_id=?", (tid,)
+            ).fetchone()
+    saved_data = dict(saved) if saved else None
+    return jsonify({
+        "match_18_complete": completed_count >= 18,
+        "complete_matches": completed_count,
+        "leader_after_match_18": leader,
+        "selection": saved_data
     })
 
 
