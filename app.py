@@ -591,6 +591,99 @@ def last_chance_qualification():
         "teams": ranked
     })
 
+
+@app.route("/api/smash-rule")
+def smash_rule():
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
+        if not tournament or "Grand Finals" not in tournament["name"]:
+            return error("This tracker is only available for Grand Finals", 400)
+        teams = [r["name"] for r in db.execute(
+            "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
+        ).fetchall()]
+        if len(teams) != 16:
+            return error("Grand Finals must have 16 registered teams", 400)
+        result_rows = db.execute("""
+            SELECT match_number, team_name, placement, kills, placement_points
+            FROM results WHERE tournament_id=? ORDER BY match_number, placement
+        """, (tid,)).fetchall()
+        by_match = {}
+        for row in result_rows:
+            by_match.setdefault(row["match_number"], []).append(dict(row))
+        registered = {name.casefold() for name in teams}
+        complete = {
+            n for n, rows in by_match.items()
+            if registered.issubset({r["team_name"].casefold() for r in rows})
+        }
+        def totals_through(last_match):
+            totals = {name.casefold(): {"team_name": name, "kills": 0,
+                      "placement_points": 0, "total_points": 0} for name in teams}
+            for match_no, rows in by_match.items():
+                if match_no > last_match or match_no not in complete:
+                    continue
+                for row in rows:
+                    item = totals.get(row["team_name"].casefold())
+                    if item:
+                        item["kills"] += row["kills"]
+                        item["placement_points"] += row["placement_points"]
+                        item["total_points"] += row["kills"] + row["placement_points"]
+            return sorted(totals.values(), key=lambda x: (
+                -x["total_points"], -x["kills"], -x["placement_points"],
+                x["team_name"].casefold()
+            ))
+        threshold = None
+        if 12 in complete:
+            after_12 = totals_through(12)
+            threshold = after_12[0]["total_points"] + 10 if after_12 else None
+        eligible = set()
+        champion = None
+        champion_match = None
+        if threshold is not None:
+            for match_no in range(13, 20):
+                if match_no not in complete:
+                    continue
+                before = totals_through(match_no - 1)
+                eligible = {x["team_name"].casefold() for x in before
+                            if x["total_points"] >= threshold}
+                winners = [r for r in by_match.get(match_no, [])
+                           if r["placement"] == 1 and r["team_name"].casefold() in eligible]
+                if winners:
+                    champion = winners[0]["team_name"]
+                    champion_match = match_no
+                    break
+        completed_count = len(complete)
+        final_fallback = False
+        if champion is None and 19 in complete:
+            final_board = totals_through(19)
+            champion = final_board[0]["team_name"] if final_board else None
+            champion_match = 19
+            final_fallback = True
+        latest_completed = max(complete) if complete else 0
+        current_board = totals_through(latest_completed)
+        current_eligible = []
+        if threshold is not None and champion is None:
+            current_eligible = [x for x in current_board if x["total_points"] >= threshold]
+        status = ("CHAMPION CONFIRMED" if champion else
+                  "MATCH POINT ACTIVE" if threshold is not None else
+                  "WAITING FOR MATCH 12")
+    return jsonify({
+        "complete_matches": completed_count,
+        "required_matches": 19,
+        "match_12_complete": 12 in complete,
+        "threshold": threshold,
+        "eligible_teams": current_eligible,
+        "champion": champion,
+        "champion_match": champion_match,
+        "fallback": final_fallback,
+        "status": status,
+        "tiebreaker": "Total points, then kills, then placement points, then team name",
+        "standings": current_board
+    })
+
+
 @app.route("/api/session")
 def session_status():
     return jsonify({"admin": bool(session.get("admin"))})
