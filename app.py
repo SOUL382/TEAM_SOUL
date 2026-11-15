@@ -444,6 +444,59 @@ def qualification():
         "provisional": not locked
     })
 
+@app.route("/api/group-qualification")
+def group_qualification():
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
+        if not tournament or "Group" not in tournament["name"]:
+            return error("This tracker is only available for Red and Green Groups", 400)
+        teams = [r["name"] for r in db.execute(
+            "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
+        ).fetchall()]
+        scheduled_count = db.execute(
+            "SELECT COUNT(*) FROM scheduled_matches WHERE tournament_id=?", (tid,)
+        ).fetchone()[0]
+        match_rows = db.execute(
+            "SELECT match_number, team_name FROM results WHERE tournament_id=?", (tid,)
+        ).fetchall()
+        teams_by_match = {}
+        for row in match_rows:
+            teams_by_match.setdefault(row["match_number"], set()).add(row["team_name"].casefold())
+        registered = {name.casefold() for name in teams}
+        complete_matches = sum(1 for names in teams_by_match.values()
+                               if registered and registered.issubset(names))
+        rows = db.execute("""
+            SELECT t.name AS team_name,
+                   COALESCE(SUM(r.kills), 0) AS kills,
+                   COALESCE(SUM(r.placement_points), 0) AS placement_points,
+                   COALESCE(SUM(r.kills+r.placement_points), 0) AS total_points
+            FROM teams t
+            LEFT JOIN results r ON r.tournament_id=t.tournament_id
+                AND r.team_name=t.name COLLATE NOCASE
+            WHERE t.tournament_id=?
+            GROUP BY t.id,t.name
+            ORDER BY total_points DESC, kills DESC, placement_points DESC, t.name COLLATE NOCASE
+        """, (tid,)).fetchall()
+    required = scheduled_count or 12
+    locked = bool(teams) and complete_matches >= required
+    ranked = []
+    for i, row in enumerate(rows):
+        item = dict(row, rank=i+1)
+        item["status"] = ("Grand Finals" if i < 3 else
+                          "Last Chance" if i < 11 else "Eliminated")
+        ranked.append(item)
+    return jsonify({
+        "complete_matches": complete_matches,
+        "required_matches": required,
+        "locked": locked,
+        "tiebreaker": "Total points, then kills, then placement points, then team name",
+        "teams": ranked
+    })
+
+
 @app.route("/api/session")
 def session_status():
     return jsonify({"admin": bool(session.get("admin"))})
