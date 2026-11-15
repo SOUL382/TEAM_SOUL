@@ -8,16 +8,39 @@
 <body>
 <header class="top">
   <a class="brand" href="/"><span class="brand-mark">S</span><span>TEAM <b>SOUL</b><small>BGMI ESPORTS TRACKER</small></span></a>
-  <nav><a href="#live">Live standings</a><a href="#matches">Match results</a><a href="/admin">Admin</a></nav>
+  <nav><a href="#contents">Contents</a><a href="#live">Live standings</a><a href="#matches">Match results</a><a href="/admin">Admin</a></nav>
 </header>
 <main>
   <section class="hero">
     <div class="eyebrow">THE BATTLEGROUNDS HUB</div>
     <h1>Every match.<br><span>Every point.</span></h1>
     <p>Follow Team SouL and the competition with tournament standings, match scores and qualification progress.</p>
-    <a class="primary-link" href="#live">VIEW LEADERBOARD <span>↗</span></a>
+    <a class="primary-link" href="#contents">EXPLORE CONTENTS <span>↗</span></a>
     <div class="hero-orb">S</div>
   </section>
+
+  <section class="section" id="contents">
+    <div class="section-head"><div><div class="eyebrow">EXPLORE THE HUB</div><h2>Contents</h2></div></div>
+    <div class="contents-grid">
+      <a class="contents-card" href="#live"><span>01</span><h3>Live Standings</h3><p>Tournament leaderboard and team points.</p></a>
+      <a class="contents-card" href="#matches"><span>02</span><h3>Match Results</h3><p>Match-by-match placements and scores.</p></a>
+      <a class="contents-card" href="#qualification"><span>03</span><h3>Qualification Tracker</h3><p>Follow the road to the Grand Finals.</p></a>
+      <a class="contents-card" href="#grand-finals-schedule"><span>04</span><h3>Grand Finals Schedule</h3><p>All 19 matches, days and map rotation.</p></a>
+      <a class="contents-card" href="#smashRule"><span>05</span><h3>Smash Rule</h3><p>Match Point race and Match 19 map selection.</p></a>
+    </div>
+  </section>
+
+  <section class="section" id="grand-finals-schedule">
+    <div class="section-head"><div><div class="eyebrow">PMGC 2026 · DECEMBER 11–13</div><h2>Grand Finals · 19-match schedule</h2></div></div>
+    <p class="note">16 teams · 3 days · 19 matches. Match 19 is the Smash Rule finale; its map will be decided after the Day 3 Erangel Showmatch.</p>
+    <div class="finals-days">
+      <article class="result-card finals-day"><div class="eyebrow">DAY 1</div><h3>Matches 1–6</h3><div class="finals-match"><span>Match 1</span><strong>Rondo</strong></div><div class="finals-match"><span>Match 2</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 3</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 4</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 5</span><strong>Miramar</strong></div><div class="finals-match"><span>Match 6</span><strong>Miramar</strong></div></article>
+      <article class="result-card finals-day"><div class="eyebrow">DAY 2</div><h3>Matches 7–12</h3><div class="finals-match"><span>Match 7</span><strong>Rondo</strong></div><div class="finals-match"><span>Match 8</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 9</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 10</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 11</span><strong>Miramar</strong></div><div class="finals-match"><span>Match 12</span><strong>Miramar</strong></div></article>
+      <article class="result-card finals-day"><div class="eyebrow">DAY 3</div><h3>Matches 13–19</h3><div class="finals-match"><span>Match 13</span><strong>Rondo</strong></div><div class="finals-match"><span>Match 14</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 15</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 16</span><strong>Erangel</strong></div><div class="finals-match"><span>Match 17</span><strong>Miramar</strong></div><div class="finals-match"><span>Match 18</span><strong>Miramar</strong></div><div class="finals-match finals-smash"><span>Match 19 · Smash Rule</span><strong>Map TBA</strong></div></article>
+    </div>
+    <p class="note">Map rotation shown here follows the schedule supplied for this tracker. Match 19 map remains pending the Showmatch ban and Match 18 leader’s selection.</p>
+  </section>
+
   <section class="section" id="live">
     <div class="section-head"><div><div class="eyebrow">TOURNAMENT CENTER</div><h2>Live standings</h2></div><select id="tournamentSelect" aria-label="Select tournament"><option value="">Loading tournaments…</option></select></div>
     <div id="tournamentMeta" class="muted"></div>
