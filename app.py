@@ -275,6 +275,102 @@ def results_api():
     except (KeyError, ValueError, TypeError):
         return error("All score fields must be valid numbers and text")
 
+
+@app.route("/api/results/bulk", methods=["POST"])
+@admin_required
+def bulk_results():
+    data = request.get_json(silent=True) or {}
+    try:
+        tid = int(data.get("tournament_id"))
+        match = int(data.get("match_number"))
+        map_name = str(data.get("map_name", "")).strip()
+        entries = data.get("entries")
+        if not map_name or match < 1 or not isinstance(entries, list):
+            return error("Choose a valid match and map, then enter every team's score")
+        with connect_db() as db:
+            tournament = db.execute("SELECT id FROM tournaments WHERE id=?", (tid,)).fetchone()
+            if not tournament:
+                return error("Tournament not found", 404)
+            teams = db.execute("SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)).fetchall()
+            team_names = [r["name"] for r in teams]
+            if not team_names or len(entries) != len(team_names):
+                return error("Submit one score for every registered team")
+            scheduled = db.execute(
+                "SELECT map_name FROM scheduled_matches WHERE tournament_id=? AND match_number=?",
+                (tid, match)
+            ).fetchone()
+            if scheduled and scheduled["map_name"].casefold() != map_name.casefold():
+                return error("The selected map does not match this scheduled match")
+            submitted = {}
+            placements = set()
+            for item in entries:
+                if not isinstance(item, dict):
+                    return error("Invalid team score row")
+                team = str(item.get("team_name", "")).strip()
+                try:
+                    placement, kills = int(item.get("placement")), int(item.get("kills"))
+                except (TypeError, ValueError):
+                    return error("Every team needs a placement and kill count")
+                key = team.casefold()
+                if key not in {n.casefold() for n in team_names} or key in submitted:
+                    return error("Team names must match the registered teams exactly once")
+                if placement < 1 or placement > len(team_names) or placement in placements or kills < 0:
+                    return error("Placements must be unique and kills cannot be negative")
+                placements.add(placement)
+                submitted[key] = (team, placement, kills)
+            if len(submitted) != len(team_names) or len(placements) != len(team_names):
+                return error("Enter a unique placement for every team")
+            for team, placement, kills in submitted.values():
+                pp = PLACEMENT_POINTS.get(placement, 0)
+                db.execute(
+                    "DELETE FROM results WHERE tournament_id=? AND match_number=? AND team_name=? COLLATE NOCASE",
+                    (tid, match, team)
+                )
+                db.execute("""INSERT INTO results
+                    (tournament_id,match_number,map_name,team_name,placement,kills,placement_points)
+                    VALUES(?,?,?,?,?,?,?)""",
+                    (tid, match, map_name, team, placement, kills, pp)
+                )
+        return jsonify({"ok": True, "saved": len(entries), "match_number": match})
+    except (TypeError, ValueError):
+        return error("Tournament and match values must be valid numbers")
+
+@app.route("/api/qualification")
+def qualification():
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        teams = [r["name"] for r in db.execute(
+            "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
+        ).fetchall()]
+        scheduled_count = db.execute(
+            "SELECT COUNT(*) FROM scheduled_matches WHERE tournament_id=?", (tid,)
+        ).fetchone()[0]
+        completed = db.execute("""
+            SELECT match_number FROM results WHERE tournament_id=?
+            GROUP BY match_number HAVING COUNT(DISTINCT team_name) >= ?
+        """, (tid, len(teams))).fetchall() if teams else []
+        rows = db.execute("""
+            SELECT team_name, SUM(kills) AS kills,
+                   SUM(placement_points) AS placement_points,
+                   SUM(kills+placement_points) AS total_points
+            FROM results WHERE tournament_id=?
+            GROUP BY team_name
+            ORDER BY total_points DESC, kills DESC, placement_points DESC, team_name COLLATE NOCASE
+        """, (tid,)).fetchall()
+    complete_matches = len(completed)
+    required = scheduled_count or 12
+    locked = bool(teams) and complete_matches >= required
+    ranked = [dict(r, rank=i+1) for i,r in enumerate(rows)]
+    return jsonify({
+        "complete_matches": complete_matches,
+        "required_matches": required,
+        "locked": locked,
+        "tiebreaker": "Total points, then kills, then placement points, then team name",
+        "qualified": ranked[:6] if locked else []
+    })
+
 @app.route("/api/results/<int:result_id>", methods=["PATCH", "DELETE"])
 @admin_required
 def edit_result(result_id):
