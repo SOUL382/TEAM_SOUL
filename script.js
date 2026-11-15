@@ -9,9 +9,9 @@ async function loadQualification(ts){
  if(!stage){$('qualificationStatus').innerHTML='<p class="muted">Gauntlet qualification tracker will appear here.</p>';$('qualifiedTeams').innerHTML='';return}
  const q=await api('/api/qualification?tournament_id='+stage.id);
  $('qualificationStatus').innerHTML=q.locked
-  ?'<div class="eyebrow">QUALIFICATION CONFIRMED</div><h3>Top 6 are through to the Grand Finals 💚💙</h3><p>'+q.complete_matches+' of '+q.required_matches+' matches completed.</p><p class="muted">Tiebreaker: '+esc(q.tiebreaker)+'.</p>'
-  :'<div class="eyebrow">QUALIFICATION IN PROGRESS</div><h3>'+q.complete_matches+' / '+q.required_matches+' matches completed</h3><p class="muted">The top 6 will be confirmed automatically after all scheduled matches have complete team results.</p>';
- $('qualifiedTeams').innerHTML=q.locked?q.qualified.map(t=>'<article class="result-card"><div class="eyebrow">QUALIFIED · #'+t.rank+'</div><h3>'+esc(t.team_name)+'</h3><div>Total points: <strong>'+t.total_points+'</strong></div><div>Kills: '+t.kills+' · Placement: '+t.placement_points+'</div></article>').join(''):'';
+  ?'<div class="eyebrow">FINAL QUALIFICATION CONFIRMED</div><h3>Top 6 have secured Grand Finals places 💚💙</h3><p>'+q.complete_matches+' of '+q.required_matches+' matches completed.</p><p class="muted">Tiebreaker: '+esc(q.tiebreaker)+'.</p>'
+  :'<div class="eyebrow">LIVE QUALIFICATION RACE</div><h3>'+q.complete_matches+' / '+q.required_matches+' matches completed</h3><p class="muted">Current provisional Top 6 · Rankings update after every recorded match. Tiebreaker: '+esc(q.tiebreaker)+'.</p>';
+ $('qualifiedTeams').innerHTML=q.qualified.map(t=>'<article class="result-card"><div class="eyebrow">'+(q.locked?'QUALIFIED':'PROVISIONAL TOP 6')+' · #'+t.rank+'</div><h3>'+esc(t.team_name)+'</h3><div>Total points: <strong>'+t.total_points+'</strong></div><div>Kills: '+t.kills+' · Placement: '+t.placement_points+'</div></article>').join('');
 }
 
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
