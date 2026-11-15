@@ -20,8 +20,10 @@ async function loadSmashRule(t){
   status='<div class="eyebrow">MATCH POINT ACTIVE</div><h3>Threshold: '+q.threshold+' points</h3><p class="muted">'+q.complete_matches+' / 19 matches completed. Teams reaching '+q.threshold+' points become eligible from the following match. The first eligible team to win a WWCD becomes champion.</p>';
  }
  $('smashStatus').innerHTML=status+'<p class="muted">Match Point threshold = leading team’s total after Match 12 + 10. Tiebreaker: '+esc(q.tiebreaker)+'.</p>';
- if(q.champion){$('smashEligible').innerHTML='';return}
+ if(q.champion){$('smashEligible').innerHTML='';}
+ else {
  $('smashEligible').innerHTML=q.threshold===null?'<article class="result-card"><h3>Waiting for Match 12</h3><p class="muted">Enter complete results for all 16 teams in Match 12 to calculate the threshold.</p></article>':(q.eligible_teams.length?q.eligible_teams.map(t=>'<article class="result-card"><div class="eyebrow">MATCH POINT ELIGIBLE</div><h3>'+esc(t.team_name)+'</h3><div>Total points: <strong>'+t.total_points+'</strong></div></article>').join(''):'<article class="result-card"><h3>No eligible teams yet</h3><p class="muted">Eligibility will update after each completed match.</p></article>');
+ }
  const mapState=await api('/api/grand-finals-map-selection?tournament_id='+t.id);
  if(!mapState.match_18_complete){
   $('smashMapSelection').innerHTML='<h3>Waiting for Match 18</h3><p class="muted">'+mapState.complete_matches+' / 18 matches completed. The Match 19 map selection will appear after all 16 teams’ Match 18 results are recorded.</p>';
