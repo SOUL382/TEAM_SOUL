@@ -634,17 +634,18 @@ def smash_rule():
                 -x["total_points"], -x["kills"], -x["placement_points"],
                 x["team_name"].casefold()
             ))
+        completed_count = 0
+        while completed_count + 1 in complete:
+            completed_count += 1
         threshold = None
-        if 12 in complete:
+        if completed_count >= 12:
             after_12 = totals_through(12)
             threshold = after_12[0]["total_points"] + 10 if after_12 else None
         eligible = set()
         champion = None
         champion_match = None
         if threshold is not None:
-            for match_no in range(13, 20):
-                if match_no not in complete:
-                    continue
+            for match_no in range(13, min(completed_count, 19) + 1):
                 before = totals_through(match_no - 1)
                 eligible = {x["team_name"].casefold() for x in before
                             if x["total_points"] >= threshold}
@@ -654,14 +655,13 @@ def smash_rule():
                     champion = winners[0]["team_name"]
                     champion_match = match_no
                     break
-        completed_count = len(complete)
         final_fallback = False
-        if champion is None and 19 in complete:
+        if champion is None and completed_count >= 19:
             final_board = totals_through(19)
             champion = final_board[0]["team_name"] if final_board else None
             champion_match = 19
             final_fallback = True
-        latest_completed = max(complete) if complete else 0
+        latest_completed = completed_count
         current_board = totals_through(latest_completed)
         current_eligible = []
         if threshold is not None and champion is None:
