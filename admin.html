@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin | Team SouL Tracker</title><link rel="stylesheet" href="/style.css"></head>
+<body><header class="top"><a class="brand" href="/"><span class="brand-mark">S</span><span>TEAM <b>SOUL</b><small>ADMIN WORKSPACE</small></span></a><nav><a href="/">Public site</a></nav></header>
+<main class="admin-main">
+<section id="loginPanel" class="panel narrow"><div class="eyebrow">RESTRICTED ACCESS</div><h1>Admin login</h1><p class="muted">Sign in to manage tournaments and match scores.</p><form id="loginForm"><label>Admin password<input id="password" type="password" required autocomplete="current-password"></label><button class="button" type="submit">SIGN IN</button><p id="loginMessage" class="message"></p></form></section>
+<div id="workspace" hidden>
+<div class="section-head"><div><div class="eyebrow">CONTROL ROOM</div><h1>Admin workspace</h1></div><button id="logout" class="button secondary">LOG OUT</button></div>
+<div class="admin-grid">
+<section class="panel"><h2>Create tournament</h2><form id="tournamentForm"><label>Tournament name<input id="tName" required placeholder="PMGC 2026 - Gauntlet"></label><label>Status<select id="tStatus"><option>Upcoming</option><option>Live</option><option>Completed</option></select></label><button class="button">CREATE TOURNAMENT</button></form></section>
+<section class="panel"><h2>Add / register team</h2><form id="teamForm"><label>Tournament<select id="teamTournament" required></select></label><label>Team name<input id="teamName" required placeholder="Team SouL"></label><label>Players (optional, comma separated)<input id="players" placeholder="Player 1, Player 2, Player 3, Player 4"></label><button class="button">ADD TEAM</button></form><div id="teamList" class="compact-list"></div></section>
+<section class="panel"><h2>Enter match result</h2><form id="scoreForm"><label>Tournament<select id="scoreTournament" required></select></label><div class="two"><label>Match number<input id="match" type="number" min="1" required></label><label>Map<input id="map" required placeholder="Erangel"></label></div><label>Team<input id="scoreTeam" required placeholder="Team SouL"></label><div class="two"><label>Placement<input id="placement" type="number" min="1" required></label><label>Kills<input id="kills" type="number" min="0" required></label></div><label>Placement points <span class="muted">(auto-filled; editable)</span><input id="placementPoints" type="number" min="0" required></label><button class="button">SAVE MATCH SCORE</button></form><p class="note">Default BGMI placement points: 1st 10, 2nd 6, 3rd 5, 4th 4, 5th 3, 6th 2, 7th–8th 1. One point per kill.</p></section>
+<section class="panel"><h2>Team highlights</h2><p class="muted">Choose any registered team to highlight it on the public leaderboard.</p><div id="highlightList" class="compact-list"></div></section>
+</div>
+<section class="panel"><div class="section-head"><h2>Recorded results</h2><button id="refresh" class="button secondary">REFRESH</button></div><div id="adminResults" class="compact-list"></div></section>
+<p id="adminMessage" class="message"></p>
+</div></main><footer>Team SouL community tracker · Admin tools</footer><script src="/admin.js"></script></body></html>
