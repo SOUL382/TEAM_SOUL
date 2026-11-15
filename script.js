@@ -35,5 +35,18 @@ async function loadSmashRule(t){
   $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after Match 18.</p><p class="muted">Waiting for the Erangel Showmatch winner, their map ban and the leader’s Match 19 map selection to be entered by an admin.</p>';
  }
 }
+
+async function loadTeamDirectory(){
+ const meta=$('teamDirectoryMeta'),grid=$('teamDirectoryGrid');
+ if(!meta||!grid)return;
+ try{
+  const tournaments=await api('/api/tournaments');
+  const master=tournaments.find(t=>t.name==='PMGC 2026');
+  if(!master){meta.textContent='The PMGC 2026 master team board is not available yet.';grid.innerHTML='';return;}
+  const teams=await api('/api/teams?tournament_id='+master.id);
+  meta.textContent=teams.length+' teams registered · Team names only, with no scores or ranking.';
+  grid.innerHTML=teams.map(team=>'<article class="team-directory-card"><span class="team-directory-mark">S</span><strong>'+esc(team.name)+'</strong></article>').join('')||'<div class="empty">No teams have been added yet.</div>';
+ }catch(e){meta.textContent='Could not load the team directory: '+e.message;grid.innerHTML='';}
+}
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-$('tournamentSelect').addEventListener('change',loadBoard);loadTournaments();
+$('tournamentSelect').addEventListener('change',loadBoard);loadTournaments();loadTeamDirectory();
