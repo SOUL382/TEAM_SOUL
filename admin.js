@@ -2,7 +2,7 @@ const $=id=>document.getElementById(id);let tournaments=[];
 async function api(url,opts={}){const r=await fetch(url,{...opts,headers:{'Content-Type':'application/json',...(opts.headers||{})}});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
 function msg(s){$('adminMessage').textContent=s}
 async function start(){const s=await api('/api/session');if(s.admin){$('loginPanel').hidden=true;$('workspace').hidden=false;await refresh()}else{$('loginPanel').hidden=false;$('workspace').hidden=true}}
-async function refresh(){tournaments=await api('/api/tournaments');['teamTournament','bulkTournament','scoreTournament','bulkScoreTournament'].forEach(id=>{const el=$(id);el.innerHTML=tournaments.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('')});if(tournaments.length){await Promise.all([loadTeams(),loadResults(),loadBulkSetup()])}}
+async function refresh(){tournaments=await api('/api/tournaments');['teamTournament','bulkTournament','scoreTournament','bulkScoreTournament'].forEach(id=>{const el=$(id);el.innerHTML=tournaments.map(t=>'<option value="'+t.id+'">'+esc(t.name)+'</option>').join('')});if(tournaments.length){await Promise.all([loadTeams(),loadResults(),loadBulkSetup(),loadGrandFinalsMapSetup()])}}
 async function loadTeams(){const tid=$('teamTournament').value;if(!tid)return;const teams=await api('/api/teams?tournament_id='+tid);$('teamList').innerHTML=teams.map(t=>'<div class="compact-row"><span><b>'+esc(t.name)+'</b><br><span class="muted">'+esc(t.players||'Players not set')+'</span></span><span><button data-rename="'+t.id+'" data-name="'+esc(t.name)+'">EDIT NAME</button> <button data-highlight="'+t.id+'" data-value="'+(t.highlighted?0:1)+'">'+(t.highlighted?'UNHIGHLIGHT':'HIGHLIGHT')+'</button></span></div>').join('')||'<p class="muted">No teams registered yet.</p>';$('highlightList').innerHTML=teams.map(t=>'<div class="compact-row"><span>'+esc(t.name)+'</span><button data-highlight="'+t.id+'" data-value="'+(t.highlighted?0:1)+'">'+(t.highlighted?'★ ON':'☆ OFF')+'</button></div>').join('')||'<p class="muted">Add teams to manage highlights.</p>'}
 async function loadResults(){const tid=$('scoreTournament').value;if(!tid)return;const rows=await api('/api/results?tournament_id='+tid);$('adminResults').innerHTML=rows.map(r=>'<div class="compact-row"><span><b>M'+r.match_number+' · '+esc(r.team_name)+'</b><br><span class="muted">'+esc(r.map_name)+' · #'+r.placement+' · '+r.kills+' kills · '+(r.kills+r.placement_points)+' pts</span></span><span><button data-edit="'+r.id+'">EDIT</button> <button class="danger" data-delete="'+r.id+'">DELETE</button></span></div>').join('')||'<p class="muted">No results recorded yet.</p>'}
 $('loginForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('loginMessage').textContent='Signed in.';await start()}catch(err){$('loginMessage').textContent=err.message}});
@@ -26,6 +26,45 @@ $('teamTournament').addEventListener('change',loadTeams);$('scoreTournament').ad
 document.addEventListener('click',async e=>{const h=e.target.closest('[data-highlight]');const rename=e.target.closest('[data-rename]');const del=e.target.closest('[data-delete]');const edit=e.target.closest('[data-edit]');try{if(rename){const current=rename.dataset.name;const name=prompt('Enter the confirmed team name:',current);if(name===null)return;if(!name.trim())return msg('Team name cannot be blank.');await api('/api/teams/'+rename.dataset.rename,{method:'PATCH',body:JSON.stringify({name:name.trim()})});msg('Team name updated.');await loadTeams()}if(h){await api('/api/teams/'+h.dataset.highlight,{method:'PATCH',body:JSON.stringify({highlighted:Number(h.dataset.value)})});await loadTeams()}if(del){if(confirm('Delete this result?')){await api('/api/results/'+del.dataset.delete,{method:'DELETE'});await loadResults()}}if(edit){const id=edit.dataset.edit;const match=prompt('New match number?');if(match===null)return;const placement=prompt('New placement?');if(placement===null)return;const kills=prompt('New kills?');if(kills===null)return;const pp=({1:10,2:6,3:5,4:4,5:3,6:2,7:1,8:1})[Number(placement)]||0;await api('/api/results/'+id,{method:'PATCH',body:JSON.stringify({match_number:Number(match),placement:Number(placement),kills:Number(kills),placement_points:pp})});msg('Result updated.');await loadResults()}}catch(err){msg(err.message)}});
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 
+async function loadGrandFinalsMapSetup(){
+ const finals=tournaments.find(t=>t.name==='PMGC 2026 - Grand Finals');
+ $('gfMapTournament').innerHTML=finals?'<option value="'+finals.id+'">'+esc(finals.name)+'</option>':'<option value="">Grand Finals tournament not found</option>';
+ $('gfShowmatchWinner').innerHTML='<option value="">Choose team</option>';
+ $('saveGfMap').disabled=true;
+ if(!finals){$('gfMapLeader').innerHTML='<p class="muted">Create or restore the Grand Finals tournament first.</p>';return}
+ try{
+  const [teams,state]=await Promise.all([
+   api('/api/teams?tournament_id='+finals.id),
+   api('/api/grand-finals-map-selection?tournament_id='+finals.id)
+  ]);
+  $('gfShowmatchWinner').innerHTML='<option value="">Choose team</option>'+teams.map(t=>'<option>'+esc(t.name)+'</option>').join('');
+  if(state.leader_after_match_18){
+   const leader=state.leader_after_match_18;
+   $('gfMapLeader').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after 18 matches · '+state.complete_matches+'/19 consecutive matches completed.</p>';
+   $('saveGfMap').disabled=false;
+  }else{
+   $('gfMapLeader').innerHTML='<h3>Waiting for Match 18</h3><p class="muted">'+state.complete_matches+'/19 consecutive matches completed. Save all 16 teams’ Match 18 results to unlock this form.</p>';
+  }
+  if(state.selection){
+   $('gfShowmatchWinner').value=state.selection.showmatch_winner;
+   $('gfBannedMap').value=state.selection.banned_map;
+   $('gfSelectedMap').value=state.selection.selected_map;
+   $('gfMapMessage').textContent='Saved selection: '+state.selection.banned_map+' banned · '+state.selection.selected_map+' selected for Match 19.';
+  }else{$('gfMapMessage').textContent='No Match 19 map selection saved yet.'}
+ }catch(err){$('gfMapLeader').innerHTML='<p class="message">'+esc(err.message)+'</p>'}
+}
+$('gfMapForm').addEventListener('submit',async e=>{
+ e.preventDefault();
+ const tid=$('gfMapTournament').value;
+ const payload={tournament_id:tid,showmatch_winner:$('gfShowmatchWinner').value,banned_map:$('gfBannedMap').value.trim(),selected_map:$('gfSelectedMap').value.trim()};
+ if(!payload.showmatch_winner||!payload.banned_map||!payload.selected_map){$('gfMapMessage').textContent='Complete all three fields.';return}
+ if(payload.banned_map.toLowerCase()===payload.selected_map.toLowerCase()){$('gfMapMessage').textContent='Selected map cannot be the banned map.';return}
+ try{
+  await api('/api/grand-finals-map-selection',{method:'POST',body:JSON.stringify(payload)});
+  $('gfMapMessage').textContent='Match 19 map selection saved successfully.';
+  await loadGrandFinalsMapSetup();
+ }catch(err){$('gfMapMessage').textContent=err.message}
+});
 async function loadBulkSetup(){
  const tid=$('bulkScoreTournament').value;
  $('bulkMatch').innerHTML='<option value="">Loading matches…</option>';
