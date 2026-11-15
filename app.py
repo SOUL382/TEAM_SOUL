@@ -367,6 +367,7 @@ def qualification():
                 AND r.team_name=t.name COLLATE NOCASE
             WHERE t.tournament_id=?
             GROUP BY t.id,t.name
+            HAVING COUNT(r.id) > 0
             ORDER BY total_points DESC, kills DESC, placement_points DESC, t.name COLLATE NOCASE
         """, (tid,)).fetchall()
     required = scheduled_count or 12
