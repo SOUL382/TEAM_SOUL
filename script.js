@@ -49,9 +49,55 @@ async function loadTeamDirectory(){
   '3Boars Gaming','FURIA Esports','Alpha7 Esports','Weibo Gaming','LGD Gaming',
   'DRX','VARREL','Dplus KIA','ULF Esports'
  ];
- meta.textContent=teams.length+' teams · PMGC 2026 team directory · Names only, no scores or ranking.';
- const soulLogo='https://i0.wp.com/gamingonphone.com/wp-content/uploads/2022/03/Team-SouL-BGMI.jpg';
- grid.innerHTML=teams.map(name=>'<article class="team-directory-card">'+(name==='Team SouL'?'<img class="team-directory-logo" src="'+soulLogo+'" alt="Team SouL logo" loading="lazy" referrerpolicy="no-referrer">':'<span class="team-directory-mark">'+esc(name.slice(0,1))+'</span>')+'<strong>'+esc(name)+'</strong></article>').join('');
+ const logoFiles={
+  'AK Gold Esports':'AK_Gold_Esports_allmode.png',
+  'Sharper Esports':'900px-Sharper_Esports_2026_full_allmode.png',
+  '4Thrives':'900px-4thrives_gold_logo_2024_allmode.png',
+  'The MongolZ':'900px-The_MongolZ_2024_03_allmode.png',
+  'Aurora Gaming':'900px-Aurora_Gaming_2025_full_allmode.png',
+  '4K Esports':'900px-4K_Esports_allmode.png',
+  'iKURD Esports':'900px-IKURD_Esports_2025_allmode.png',
+  'S2G Esports':'51px-S2G_Esports_allmode.png',
+  'Wolves Esports':'87px-Wolves_Esports_allmode.png',
+  'RoW Esports':'91px-RoW_Esports_2025_allmode.png',
+  'XForce Rejects':'117px-XFORCE_REJECTS_darkmode.png',
+  'All Gamers':'58px-All_Gamers_allmode.png',
+  'Team SouL':'61px-Team_Soul_2019_allmode.png',
+  'Nongshim RedForce':'56px-Nongshim_RedForce_allmode.png',
+  'Bigetron by Vitality':'89px-Bigetron_by_Vitality_full_darkmode.png',
+  'eArena':'75px-EArena_2022_allmode.png',
+  'Team Flash':'84px-Team_Flash_allmode.png',
+  'Horaa Esports':'77px-Horaa_Esports_darkmode.png',
+  'Trained to Kill':'86px-Trained_To_Kill_2020_darkmode.png',
+  'OLD NOT':'74px-OLD_NOT_2024_darkmode.png',
+  'GOAT TEAM':'83px-GOAT_TEAM_allmode.png',
+  'AlUla Club Esports':'60px-Al-Ula_allmode.png',
+  'Geekay Esports':'101px-Geekay_Esports_2024_allmode.png',
+  'Nigma Galaxy':'75px-Nigma_Galaxy_darkmode.png',
+  'R8 Esports':'89px-R8_Esports_2022_darkmode.png',
+  'Selibon Esports':'93px-Selibon_Esports_allmode.png',
+  'BUF Esports':'67px-BUF_Esports_allmode.png',
+  'BRX MSM Esports':'72px-BRX_MSM_Esports_allmode.png',
+  '3Boars Gaming':'59px-Boars_Gaming_allmode.png',
+  'FURIA Esports':'77px-FURIA_Esports_allmode.png',
+  'Alpha7 Esports':'109px-A7_eSports_darkmode.png',
+  'Weibo Gaming':'93px-Weibo_allmode.png',
+  'LGD Gaming':'75px-LGD_Gaming_Dec_2019_allmode.png',
+  'DRX':'75px-DRX_2026_darkmode.png',
+  'VARREL':'74px-VARREL_2026_allmode.png',
+  'Dplus KIA':'150px-Dplus_darkmode.png',
+  'ULF Esports':'102px-ULF_Esports_darkmode.png'
+ };
+ const base='/static/images/teams/';
+ const logoCount=Object.keys(logoFiles).length;
+ meta.textContent=teams.length+' teams · '+logoCount+' team logos connected · 32 × 32 px';
+ grid.innerHTML=teams.map(name=>{
+  const file=logoFiles[name];
+  const visual=file
+   ?'<img class="team-directory-logo" src="'+base+encodeURIComponent(file).replace(/%2F/g,'/')+'" alt="'+esc(name)+' logo" loading="lazy">'
+   :'<span class="team-directory-mark">'+esc(name.slice(0,1))+'</span>';
+  return '<article class="team-directory-card">'+visual+'<strong>'+esc(name)+'</strong></article>';
+ }).join('');
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 $('tournamentSelect').addEventListener('change',loadBoard);loadTournaments();loadTeamDirectory();
