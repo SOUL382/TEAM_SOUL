@@ -1,232 +1,276 @@
-
 import os
 import sqlite3
 from functools import wraps
-from flask import (
-    Flask, request, jsonify, session,
-    redirect, send_from_directory
-)
+from flask import Flask, request, jsonify, session, send_from_directory
 from werkzeug.security import check_password_hash
 
-app = Flask(__name__, static_folder=".")
-app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-before-deploy")
-DB_PATH = os.environ.get("DB_PATH", "tournaments.db")
-
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(__name__, static_folder=BASE_DIR)
+app.secret_key = os.environ.get("SECRET_KEY", "local-development-key-change-in-render")
+DB_PATH = os.environ.get("DB_PATH", os.path.join(BASE_DIR, "tournaments.db"))
+PLACEMENT_POINTS = {1: 10, 2: 6, 3: 5, 4: 4, 5: 3, 6: 2, 7: 1, 8: 1}
 
 def connect_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
+    db = sqlite3.connect(DB_PATH)
+    db.row_factory = sqlite3.Row
+    db.execute("PRAGMA foreign_keys = ON")
+    return db
 
 def init_db():
     with connect_db() as db:
         db.executescript("""
-            CREATE TABLE IF NOT EXISTS tournaments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                game TEXT NOT NULL DEFAULT 'BGMI',
-                status TEXT NOT NULL DEFAULT 'Upcoming'
-            );
-
-            CREATE TABLE IF NOT EXISTS results (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                tournament_id INTEGER NOT NULL,
-                match_number INTEGER NOT NULL,
-                map_name TEXT NOT NULL,
-                team_name TEXT NOT NULL,
-                placement INTEGER NOT NULL,
-                kills INTEGER NOT NULL,
-                placement_points INTEGER NOT NULL DEFAULT 0,
-                FOREIGN KEY (tournament_id)
-                    REFERENCES tournaments(id)
-            );
+        CREATE TABLE IF NOT EXISTS tournaments (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          game TEXT NOT NULL DEFAULT 'BGMI',
+          status TEXT NOT NULL DEFAULT 'Upcoming',
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS teams (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tournament_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          players TEXT NOT NULL DEFAULT '',
+          highlighted INTEGER NOT NULL DEFAULT 0,
+          UNIQUE(tournament_id, name),
+          FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+        );
+        CREATE TABLE IF NOT EXISTS results (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tournament_id INTEGER NOT NULL,
+          match_number INTEGER NOT NULL,
+          map_name TEXT NOT NULL,
+          team_name TEXT NOT NULL,
+          placement INTEGER NOT NULL,
+          kills INTEGER NOT NULL,
+          placement_points INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+        );
         """)
-
+        # Upgrade databases created by the earlier tracker version.
+        db.execute("CREATE INDEX IF NOT EXISTS idx_results_tournament ON results(tournament_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_teams_tournament ON teams(tournament_id)")
 
 def admin_required(fn):
     @wraps(fn)
-    def wrapper(*args, **kwargs):
+    def wrapped(*args, **kwargs):
         if not session.get("admin"):
             return jsonify({"error": "Admin login required"}), 401
         return fn(*args, **kwargs)
-    return wrapper
+    return wrapped
 
+def error(message, status=400):
+    return jsonify({"error": message}), status
 
 @app.route("/")
 def home():
-    return send_from_directory(".", "index.html")
-
+    return send_from_directory(BASE_DIR, "index.html")
 
 @app.route("/admin")
 def admin_page():
-    return send_from_directory(".", "admin.html")
+    return send_from_directory(BASE_DIR, "admin.html")
 
-
-@app.route("/api/tournaments")
+@app.route("/api/tournaments", methods=["GET"])
 def get_tournaments():
     with connect_db() as db:
-        rows = db.execute(
-            "SELECT * FROM tournaments ORDER BY id DESC"
-        ).fetchall()
-    return jsonify([dict(row) for row in rows])
-
+        rows = db.execute("SELECT * FROM tournaments ORDER BY id DESC").fetchall()
+    return jsonify([dict(r) for r in rows])
 
 @app.route("/api/tournaments", methods=["POST"])
 @admin_required
 def add_tournament():
     data = request.get_json(silent=True) or {}
     name = str(data.get("name", "")).strip()
-    game = str(data.get("game", "BGMI")).strip()
-
     if not name:
-        return jsonify({"error": "Tournament name is required"}), 400
-
+        return error("Tournament name is required")
+    game = str(data.get("game", "BGMI")).strip() or "BGMI"
+    status = str(data.get("status", "Upcoming")).strip() or "Upcoming"
     with connect_db() as db:
-        cur = db.execute(
-            "INSERT INTO tournaments (name, game) VALUES (?, ?)",
-            (name, game or "BGMI")
-        )
-        tournament_id = cur.lastrowid
+        cur = db.execute("INSERT INTO tournaments(name, game, status) VALUES(?,?,?)", (name, game, status))
+        tid = cur.lastrowid
+    return jsonify({"id": tid, "name": name, "game": game, "status": status}), 201
 
-    return jsonify({"id": tournament_id, "name": name}), 201
-
-
-@app.route("/api/results", methods=["GET"])
-def get_results():
-    tournament_id = request.args.get("tournament_id", type=int)
-
-    query = """
-        SELECT r.*, t.name AS tournament_name
-        FROM results r
-        JOIN tournaments t ON t.id = r.tournament_id
-    """
-    params = []
-
-    if tournament_id:
-        query += " WHERE r.tournament_id = ?"
-        params.append(tournament_id)
-
-    query += " ORDER BY r.match_number, r.placement"
-
-    with connect_db() as db:
-        rows = db.execute(query, params).fetchall()
-
-    return jsonify([dict(row) for row in rows])
-
-
-@app.route("/api/results", methods=["POST"])
+@app.route("/api/tournaments/<int:tid>", methods=["PATCH"])
 @admin_required
-def add_result():
+def update_tournament(tid):
     data = request.get_json(silent=True) or {}
+    fields = {k: str(data[k]).strip() for k in ("name", "status", "game") if k in data}
+    if not fields:
+        return error("No tournament fields supplied")
+    sql = ", ".join(f"{k}=?" for k in fields)
+    with connect_db() as db:
+        cur = db.execute(f"UPDATE tournaments SET {sql} WHERE id=?", (*fields.values(), tid))
+        if not cur.rowcount:
+            return error("Tournament not found", 404)
+    return jsonify({"ok": True})
 
+@app.route("/api/teams", methods=["GET", "POST"])
+def teams_api():
+    if request.method == "POST" and not session.get("admin"):
+        return error("Admin login required", 401)
+    tid = request.args.get("tournament_id", type=int)
+    if request.method == "GET":
+        if not tid:
+            return error("tournament_id is required")
+        with connect_db() as db:
+            rows = db.execute("SELECT * FROM teams WHERE tournament_id=? ORDER BY name", (tid,)).fetchall()
+        return jsonify([dict(r) for r in rows])
+    data = request.get_json(silent=True) or {}
     try:
-        tournament_id = int(data["tournament_id"])
-        match_number = int(data["match_number"])
+        tid = int(data["tournament_id"])
+        name = str(data["name"]).strip()
+        players = str(data.get("players", "")).strip()
+        if not name:
+            return error("Team name is required")
+        with connect_db() as db:
+            cur = db.execute("INSERT INTO teams(tournament_id,name,players) VALUES(?,?,?)", (tid, name, players))
+        return jsonify({"id": cur.lastrowid, "name": name}), 201
+    except sqlite3.IntegrityError:
+        return error("That team is already added, or the tournament does not exist")
+    except (KeyError, ValueError, TypeError):
+        return error("Valid tournament and team name are required")
+
+@app.route("/api/teams/<int:team_id>", methods=["PATCH"])
+@admin_required
+def update_team(team_id):
+    data = request.get_json(silent=True) or {}
+    allowed = {k: data[k] for k in ("name", "players", "highlighted") if k in data}
+    if not allowed:
+        return error("No team fields supplied")
+    if "highlighted" in allowed:
+        allowed["highlighted"] = 1 if allowed["highlighted"] else 0
+    with connect_db() as db:
+        sql = ", ".join(f"{k}=?" for k in allowed)
+        cur = db.execute(f"UPDATE teams SET {sql} WHERE id=?", (*allowed.values(), team_id))
+        if not cur.rowcount:
+            return error("Team not found", 404)
+    return jsonify({"ok": True})
+
+@app.route("/api/results", methods=["GET", "POST"])
+def results_api():
+    if request.method == "POST" and not session.get("admin"):
+        return error("Admin login required", 401)
+    if request.method == "GET":
+        tid = request.args.get("tournament_id", type=int)
+        query = "SELECT * FROM results"
+        params = []
+        if tid:
+            query += " WHERE tournament_id=?"
+            params.append(tid)
+        query += " ORDER BY match_number DESC, placement ASC"
+        with connect_db() as db:
+            rows = db.execute(query, params).fetchall()
+        return jsonify([dict(r) for r in rows])
+    data = request.get_json(silent=True) or {}
+    try:
+        tid = int(data["tournament_id"])
+        match = int(data["match_number"])
         placement = int(data["placement"])
         kills = int(data["kills"])
         map_name = str(data["map_name"]).strip()
         team_name = str(data["team_name"]).strip()
-        placement_points = int(data.get("placement_points", 0))
+        pp = int(data.get("placement_points", PLACEMENT_POINTS.get(placement, 0)))
+        if match < 1 or placement < 1 or kills < 0 or pp < 0 or not map_name or not team_name:
+            return error("Check match, placement, map, team and score values")
+        with connect_db() as db:
+            exists = db.execute("SELECT id FROM tournaments WHERE id=?", (tid,)).fetchone()
+            if not exists:
+                return error("Tournament not found", 404)
+            cur = db.execute("""INSERT INTO results
+              (tournament_id,match_number,map_name,team_name,placement,kills,placement_points)
+              VALUES(?,?,?,?,?,?,?)""", (tid,match,map_name,team_name,placement,kills,pp))
+        return jsonify({"id": cur.lastrowid, "total_points": kills + pp}), 201
     except (KeyError, ValueError, TypeError):
-        return jsonify({"error": "Check all score fields"}), 400
+        return error("All score fields must be valid numbers and text")
 
-    if (
-        match_number < 1 or placement < 1 or kills < 0
-        or placement_points < 0
-        or not map_name or not team_name
-    ):
-        return jsonify({"error": "Invalid score values"}), 400
-
+@app.route("/api/results/<int:result_id>", methods=["PATCH", "DELETE"])
+@admin_required
+def edit_result(result_id):
     with connect_db() as db:
-        exists = db.execute(
-            "SELECT id FROM tournaments WHERE id = ?",
-            (tournament_id,)
-        ).fetchone()
-
-        if not exists:
-            return jsonify({"error": "Tournament not found"}), 404
-
-        cur = db.execute("""
-            INSERT INTO results
-            (tournament_id, match_number, map_name, team_name,
-             placement, kills, placement_points)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (
-            tournament_id, match_number, map_name, team_name,
-            placement, kills, placement_points
-        ))
-
-    return jsonify({
-        "id": cur.lastrowid,
-        "total_points": kills + placement_points
-    }), 201
-
+        if request.method == "DELETE":
+            cur = db.execute("DELETE FROM results WHERE id=?", (result_id,))
+            if not cur.rowcount:
+                return error("Result not found", 404)
+            return jsonify({"ok": True})
+        data = request.get_json(silent=True) or {}
+        fields = {}
+        for key in ("match_number", "placement", "kills", "placement_points"):
+            if key in data:
+                fields[key] = int(data[key])
+        for key in ("map_name", "team_name"):
+            if key in data:
+                fields[key] = str(data[key]).strip()
+        if not fields:
+            return error("No score fields supplied")
+        if any(v < 0 for k, v in fields.items() if k in ("kills", "placement_points")):
+            return error("Points and kills cannot be negative")
+        sql = ", ".join(f"{k}=?" for k in fields)
+        cur = db.execute(f"UPDATE results SET {sql} WHERE id=?", (*fields.values(), result_id))
+        if not cur.rowcount:
+            return error("Result not found", 404)
+    return jsonify({"ok": True})
 
 @app.route("/api/standings")
 def standings():
-    tournament_id = request.args.get("tournament_id", type=int)
-
-    query = """
-        SELECT team_name,
-               SUM(kills) AS total_kills,
-               SUM(placement_points) AS placement_points,
-               SUM(kills + placement_points) AS total_points,
-               COUNT(DISTINCT match_number) AS matches_played
-        FROM results
-    """
-    params = []
-
-    if tournament_id:
-        query += " WHERE tournament_id = ?"
-        params.append(tournament_id)
-
-    query += """
-        GROUP BY team_name
-        ORDER BY total_points DESC, total_kills DESC
-    """
-
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
     with connect_db() as db:
-        rows = db.execute(query, params).fetchall()
-
-    return jsonify([dict(row) for row in rows])
-
+        rows = db.execute("""
+          SELECT t.id AS team_id, t.name AS team_name, t.highlighted,
+            COALESCE(COUNT(DISTINCT r.match_number),0) AS matches_played,
+            COALESCE(SUM(r.kills),0) AS total_kills,
+            COALESCE(SUM(r.placement_points),0) AS placement_points,
+            COALESCE(SUM(r.kills+r.placement_points),0) AS total_points
+          FROM teams t LEFT JOIN results r
+            ON r.tournament_id=t.tournament_id AND r.team_name=t.name
+          WHERE t.tournament_id=?
+          GROUP BY t.id,t.name,t.highlighted
+          ORDER BY total_points DESC,total_kills DESC,t.name ASC
+        """, (tid,)).fetchall()
+        # Include teams that have scores but were not pre-registered.
+        extras = db.execute("""
+          SELECT NULL AS team_id, r.team_name, 0 AS highlighted,
+            COUNT(DISTINCT r.match_number) AS matches_played,
+            SUM(r.kills) AS total_kills, SUM(r.placement_points) AS placement_points,
+            SUM(r.kills+r.placement_points) AS total_points
+          FROM results r LEFT JOIN teams t
+            ON t.tournament_id=r.tournament_id AND t.name=r.team_name
+          WHERE r.tournament_id=? AND t.id IS NULL GROUP BY r.team_name
+        """, (tid,)).fetchall()
+    combined = [dict(r) for r in rows] + [dict(r) for r in extras]
+    combined.sort(key=lambda r: (-r["total_points"], -r["total_kills"], r["team_name"].lower()))
+    for i, row in enumerate(combined, 1):
+        row["rank"] = i
+    return jsonify(combined)
 
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.get_json(silent=True) or {}
+    supplied = str(data.get("password", ""))
     password = os.environ.get("ADMIN_PASSWORD")
     password_hash = os.environ.get("ADMIN_PASSWORD_HASH")
-    supplied = str(data.get("password", ""))
-
-    valid = (
-        password is not None and supplied == password
-    ) or (
-        password_hash is not None
-        and check_password_hash(password_hash, supplied)
-    )
-
+    valid = (password is not None and supplied == password) or (
+        password_hash is not None and check_password_hash(password_hash, supplied))
     if not valid:
-        return jsonify({
-            "error": "Invalid password or admin password not configured"
-        }), 401
-
+        return error("Incorrect password, or admin password is not configured", 401)
     session["admin"] = True
     return jsonify({"ok": True})
 
+@app.route("/api/session")
+def session_status():
+    return jsonify({"admin": bool(session.get("admin"))})
 
 @app.route("/api/logout", methods=["POST"])
 def logout():
     session.clear()
     return jsonify({"ok": True})
 
-
 @app.route("/health")
 def health():
     return jsonify({"status": "ok"})
 
-
 init_db()
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
