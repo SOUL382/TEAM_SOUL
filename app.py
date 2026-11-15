@@ -47,10 +47,49 @@ def init_db():
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS scheduled_matches (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          tournament_id INTEGER NOT NULL,
+          match_number INTEGER NOT NULL,
+          match_date TEXT NOT NULL,
+          map_name TEXT NOT NULL,
+          start_time_trt TEXT NOT NULL,
+          start_time_ist TEXT NOT NULL,
+          UNIQUE(tournament_id, match_number),
+          FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
+        );
         """)
         # Upgrade databases created by the earlier tracker version.
         db.execute("CREATE INDEX IF NOT EXISTS idx_results_tournament ON results(tournament_id)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_teams_tournament ON teams(tournament_id)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_schedule_tournament ON scheduled_matches(tournament_id)")
+        # Create the stage-specific Gauntlet board once; keep the 39-team PMGC board intact.
+        gauntlet_teams = [
+            "4K Esports", "4Thrives", "AK Gold Esports", "All Gamers",
+            "Aurora Gaming", "Gaming Stars Esports", "Hustler Crew", "iKURD Esports",
+            "Nongshim RedForce", "RoW Esports", "S2G Esports", "Sharper Esports",
+            "Team SouL", "The MongolZ", "Wolves Esports", "XForce Rejects"
+        ]
+        row = db.execute("SELECT id FROM tournaments WHERE name=?", ("PMGC 2026 - The Gauntlet",)).fetchone()
+        if row:
+            gauntlet_id = row["id"]
+        else:
+            cur = db.execute("INSERT INTO tournaments(name,game,status) VALUES(?,?,?)",
+                             ("PMGC 2026 - The Gauntlet", "BGMI", "Upcoming"))
+            gauntlet_id = cur.lastrowid
+        for team in gauntlet_teams:
+            db.execute("INSERT OR IGNORE INTO teams(tournament_id,name) VALUES(?,?)", (gauntlet_id, team))
+        if not db.execute("SELECT 1 FROM scheduled_matches WHERE tournament_id=? LIMIT 1", (gauntlet_id,)).fetchone():
+            maps = ["Rondo", "Erangel", "Erangel", "Erangel", "Miramar", "Miramar"]
+            times_trt = ["15:00", "15:40", "16:20", "17:00", "17:40", "18:20"]
+            times_ist = ["17:30", "18:10", "18:50", "19:30", "20:10", "20:50"]
+            for day, date in enumerate(("2026-11-26", "2026-11-27")):
+                for slot, map_name in enumerate(maps):
+                    match_no = day * 6 + slot + 1
+                    db.execute("""INSERT INTO scheduled_matches
+                        (tournament_id,match_number,match_date,map_name,start_time_trt,start_time_ist)
+                        VALUES(?,?,?,?,?,?)""",
+                        (gauntlet_id, match_no, date, map_name, times_trt[slot], times_ist[slot]))
 
 def admin_required(fn):
     @wraps(fn)
@@ -262,6 +301,16 @@ def edit_result(result_id):
         if not cur.rowcount:
             return error("Result not found", 404)
     return jsonify({"ok": True})
+
+@app.route("/api/schedule")
+def get_schedule():
+    tid = request.args.get("tournament_id", type=int)
+    if not tid:
+        return error("tournament_id is required")
+    with connect_db() as db:
+        rows = db.execute("""SELECT match_number,match_date,map_name,start_time_trt,start_time_ist
+            FROM scheduled_matches WHERE tournament_id=? ORDER BY match_number""", (tid,)).fetchall()
+    return jsonify([dict(r) for r in rows])
 
 @app.route("/api/standings")
 def standings():
