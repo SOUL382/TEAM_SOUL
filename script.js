@@ -50,7 +50,8 @@ async function loadTeamDirectory(){
   'DRX','VARREL','Dplus KIA','ULF Esports'
  ];
  meta.textContent=teams.length+' teams · PMGC 2026 team directory · Names only, no scores or ranking.';
- grid.innerHTML=teams.map(name=>'<article class="team-directory-card"><span class="team-directory-mark">S</span><strong>'+esc(name)+'</strong></article>').join('');
+ const soulLogo='https://i0.wp.com/gamingonphone.com/wp-content/uploads/2022/03/Team-SouL-BGMI.jpg';
+ grid.innerHTML=teams.map(name=>'<article class="team-directory-card">'+(name==='Team SouL'?'<img class="team-directory-logo" src="'+soulLogo+'" alt="Team SouL logo" loading="lazy" referrerpolicy="no-referrer">':'<span class="team-directory-mark">'+esc(name.slice(0,1))+'</span>')+'<strong>'+esc(name)+'</strong></article>').join('');
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 $('tournamentSelect').addEventListener('change',loadBoard);loadTournaments();loadTeamDirectory();
