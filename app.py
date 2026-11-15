@@ -143,6 +143,46 @@ def teams_api():
     except (KeyError, ValueError, TypeError):
         return error("Valid tournament and team name are required")
 
+@app.route("/api/teams/bulk", methods=["POST"])
+@admin_required
+def bulk_add_teams():
+    data = request.get_json(silent=True) or {}
+    try:
+        tid = int(data.get("tournament_id"))
+    except (TypeError, ValueError):
+        return error("A valid tournament is required")
+    raw_teams = data.get("teams", [])
+    if not isinstance(raw_teams, list) or not raw_teams:
+        return error("Paste at least one team name")
+    with connect_db() as db:
+        if not db.execute("SELECT id FROM tournaments WHERE id=?", (tid,)).fetchone():
+            return error("Tournament not found", 404)
+        added, skipped = [], []
+        for item in raw_teams:
+            if isinstance(item, str):
+                name, players = item.strip(), ""
+            elif isinstance(item, dict):
+                name = str(item.get("name", "")).strip()
+                players = str(item.get("players", "")).strip()
+            else:
+                continue
+            if not name:
+                continue
+            exists = db.execute(
+                "SELECT id FROM teams WHERE tournament_id=? AND name=? COLLATE NOCASE",
+                (tid, name)
+            ).fetchone()
+            if exists:
+                skipped.append(name)
+                continue
+            db.execute(
+                "INSERT INTO teams(tournament_id,name,players) VALUES(?,?,?)",
+                (tid, name, players)
+            )
+            added.append(name)
+    return jsonify({"added": added, "added_count": len(added),
+                    "skipped": skipped, "skipped_count": len(skipped)}), 201
+
 @app.route("/api/teams/<int:team_id>", methods=["PATCH"])
 @admin_required
 def update_team(team_id):
