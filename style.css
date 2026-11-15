@@ -14,3 +14,8 @@
 .finals-match strong{color:var(--lime)}
 .finals-smash{margin-top:5px;padding:12px 9px;background:#202b1b;border:1px solid #536c32;border-radius:6px}
 @media(max-width:760px){.finals-days{grid-template-columns:1fr}}
+
+.team-directory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.team-directory-card{display:flex;align-items:center;gap:12px;min-height:66px;padding:12px 14px;background:linear-gradient(145deg,#14212b,#0e151d);border:1px solid var(--line);border-radius:8px}
+.team-directory-card strong{font-size:13px;letter-spacing:.2px}
+.team-directory-mark{flex:0 0 32px;width:32px;height:32px;display:grid;place-items:center;background:#26351c;border:1px solid #536c32;border-radius:7px;color:var(--lime);font-weight:900}
