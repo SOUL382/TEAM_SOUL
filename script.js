@@ -124,6 +124,8 @@ async function loadTeamDirectory(){
 function renderMatchCentre(results,tournament){
  const matchSelect=$('matchCentreMatch'),teamSelect=$('matchCentreTeam');
  if(!matchSelect||!teamSelect)return;
+ const historyJump=$('grandFinalsHistoryJump');
+ if(historyJump)historyJump.style.display=!!tournament&&tournament.name==='PMGC 2026 - Grand Finals'?'inline-flex':'none';
  const previous=matchSelect.value;
  const matches=[...new Set(results.map(r=>Number(r.match_number)))].sort((a,b)=>b-a);
  matchSelect.innerHTML=matches.length?matches.map(n=>'<option value="'+n+'">Match '+n+'</option>').join(''):'<option value="">Waiting for results</option>';
