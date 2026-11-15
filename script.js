@@ -157,6 +157,8 @@ function renderMatchCentre(results,tournament){
  if(historySection){
   const isGrandFinals=!!tournament&&tournament.name==='PMGC 2026 - Grand Finals';
   historySection.style.display=isGrandFinals?'':'none';
+  const historyJump=$('grandFinalsHistoryJump');
+  if(historyJump)historyJump.style.display=isGrandFinals?'inline-flex':'none';
   if(isGrandFinals){
    const matchRows=[];
    let runningTotal=0;
