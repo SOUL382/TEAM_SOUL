@@ -79,6 +79,37 @@ def init_db():
             gauntlet_id = cur.lastrowid
         for team in gauntlet_teams:
             db.execute("INSERT OR IGNORE INTO teams(tournament_id,name) VALUES(?,?)", (gauntlet_id, team))
+        # Create separate Red and Green group scoreboards with editable Gauntlet placeholders.
+        group_rosters = {
+            "PMGC 2026 - Green Group": [
+                "Nigma Galaxy", "AlUla Club", "Team Flash", "eArena",
+                "BRX MSM Esports", "Horaa Esports", "FURIA", "OLD NOT",
+                "Weibo Gaming", "DRX", "Boars Gaming",
+                "Gauntlet #7", "Gauntlet #10", "Gauntlet #11", "Gauntlet #14", "Gauntlet #15"
+            ],
+            "PMGC 2026 - Red Group": [
+                "R8 Esports", "Geekay Esports", "Bigetron by Vitality", "BUF Esports",
+                "Selibon", "Trained to Kill", "Alpha7 Esports", "GOAT Team",
+                "LGD Gaming", "Dplus KIA", "Varrel",
+                "Gauntlet #8", "Gauntlet #9", "Gauntlet #12", "Gauntlet #13", "Gauntlet #16"
+            ]
+        }
+        for group_name, roster in group_rosters.items():
+            group_row = db.execute("SELECT id FROM tournaments WHERE name=?", (group_name,)).fetchone()
+            if group_row:
+                group_id = group_row["id"]
+            else:
+                group_cur = db.execute(
+                    "INSERT INTO tournaments(name,game,status) VALUES(?,?,?)",
+                    (group_name, "BGMI", "Upcoming")
+                )
+                group_id = group_cur.lastrowid
+            for team_name in roster:
+                db.execute(
+                    "INSERT OR IGNORE INTO teams(tournament_id,name) VALUES(?,?)",
+                    (group_id, team_name)
+                )
+
         if not db.execute("SELECT 1 FROM scheduled_matches WHERE tournament_id=? LIMIT 1", (gauntlet_id,)).fetchone():
             maps = ["Rondo", "Erangel", "Erangel", "Erangel", "Miramar", "Miramar"]
             times_trt = ["15:00", "15:40", "16:20", "17:00", "17:40", "18:20"]
@@ -231,11 +262,27 @@ def update_team(team_id):
         return error("No team fields supplied")
     if "highlighted" in allowed:
         allowed["highlighted"] = 1 if allowed["highlighted"] else 0
+    if "name" in allowed:
+        allowed["name"] = str(allowed["name"]).strip()
+        if not allowed["name"]:
+            return error("Team name cannot be blank")
     with connect_db() as db:
-        sql = ", ".join(f"{k}=?" for k in allowed)
-        cur = db.execute(f"UPDATE teams SET {sql} WHERE id=?", (*allowed.values(), team_id))
-        if not cur.rowcount:
+        current = db.execute("SELECT tournament_id,name FROM teams WHERE id=?", (team_id,)).fetchone()
+        if not current:
             return error("Team not found", 404)
+        if "name" in allowed and allowed["name"].casefold() != current["name"].casefold():
+            duplicate = db.execute(
+                "SELECT id FROM teams WHERE tournament_id=? AND name=? COLLATE NOCASE AND id<>?",
+                (current["tournament_id"], allowed["name"], team_id)
+            ).fetchone()
+            if duplicate:
+                return error("Another team already has that name")
+            db.execute(
+                "UPDATE results SET team_name=? WHERE tournament_id=? AND team_name=? COLLATE NOCASE",
+                (allowed["name"], current["tournament_id"], current["name"])
+            )
+        sql = ", ".join(f"{k}=?" for k in allowed)
+        db.execute(f"UPDATE teams SET {sql} WHERE id=?", (*allowed.values(), team_id))
     return jsonify({"ok": True})
 
 @app.route("/api/results", methods=["GET", "POST"])
