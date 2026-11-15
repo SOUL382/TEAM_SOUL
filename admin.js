@@ -11,7 +11,7 @@ $('tournamentForm').addEventListener('submit',async e=>{e.preventDefault();try{a
 $('teamForm').addEventListener('submit',async e=>{e.preventDefault();try{await api('/api/teams',{method:'POST',body:JSON.stringify({tournament_id:$('teamTournament').value,name:$('teamName').value,players:$('players').value})});$('teamName').value='';$('players').value='';msg('Team added.');await loadTeams()}catch(err){msg(err.message)}});
 $('bulkTeamForm').addEventListener('submit',async e=>{
  e.preventDefault();
- const names=$('bulkTeamNames').value.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+ const names=$('bulkTeamNames').value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  if(!names.length){$('bulkMessage').textContent='Paste at least one team name.';return}
  try{
   const d=await api('/api/teams/bulk',{method:'POST',body:JSON.stringify({tournament_id:$('bulkTournament').value,teams:names})});
