@@ -71,6 +71,18 @@ def home():
 def admin_page():
     return send_from_directory(BASE_DIR, "admin.html")
 
+@app.route("/style.css")
+def stylesheet():
+    return send_from_directory(BASE_DIR, "style.css", mimetype="text/css")
+
+@app.route("/script.js")
+def public_script():
+    return send_from_directory(BASE_DIR, "script.js", mimetype="application/javascript")
+
+@app.route("/admin.js")
+def admin_script():
+    return send_from_directory(BASE_DIR, "admin.js", mimetype="application/javascript")
+
 @app.route("/api/tournaments", methods=["GET"])
 def get_tournaments():
     with connect_db() as db:
