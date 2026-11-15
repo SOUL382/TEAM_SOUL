@@ -131,3 +131,12 @@ html{scroll-behavior:smooth}
 .map-stat-row strong{white-space:nowrap;color:var(--lime);font-size:10px}
 @media(max-width:760px){.match-centre-layout{grid-template-columns:1fr}.match-centre-summary{grid-template-columns:repeat(3,minmax(0,1fr))}.match-centre-stat{padding:10px}.match-centre-stat>strong{font-size:15px}}
 @media(max-width:500px){.match-centre-controls{grid-template-columns:1fr}.match-centre-summary{gap:6px}.match-centre-stat{padding:9px}.match-centre-stat>strong{font-size:13px}.match-centre-stat small{font-size:10px}.match-centre-table{min-width:520px}.map-stat-row{flex-wrap:wrap}}
+
+/* Team SouL Grand Finals match history */
+.soul-history-table{min-width:700px}
+.soul-history-table th,.soul-history-table td{padding:11px 10px;font-size:11px;white-space:nowrap}
+.soul-history-table tbody tr:nth-child(odd){background:#101a22}
+.soul-history-table tbody tr td:last-child{color:var(--lime);font-weight:800}
+.soul-history-table .history-pending td{color:var(--muted);font-style:italic}
+.soul-history-note{margin:9px 2px 0}
+@media(max-width:500px){.soul-history-table th,.soul-history-table td{padding:9px 8px;font-size:10px}}
