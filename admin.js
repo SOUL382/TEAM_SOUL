@@ -40,7 +40,7 @@ async function loadGrandFinalsMapSetup(){
   $('gfShowmatchWinner').innerHTML='<option value="">Choose team</option>'+teams.map(t=>'<option>'+esc(t.name)+'</option>').join('');
   if(state.leader_after_match_18){
    const leader=state.leader_after_match_18;
-   $('gfMapLeader').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after 18 matches · '+state.complete_matches+'/19 consecutive matches completed.</p>';
+   $('gfMapLeader').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after 18 matches · '+state.complete_matches+'/18 matches completed.</p>';
    $('saveGfMap').disabled=false;
   }else{
    $('gfMapLeader').innerHTML='<h3>Waiting for Match 18</h3><p class="muted">'+state.complete_matches+'/19 consecutive matches completed. Save all 16 teams’ Match 18 results to unlock this form.</p>';
