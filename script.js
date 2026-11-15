@@ -88,7 +88,7 @@ async function loadTeamDirectory(){
   'Dplus KIA':'150px-Dplus_darkmode.png',
   'ULF Esports':'102px-ULF_Esports_darkmode.png'
  };
- const base='/static/images/teams/';
+ const base='/static/static/images/teams/';
  const logoCount=Object.keys(logoFiles).length;
  meta.textContent=teams.length+' teams · '+logoCount+' team logos connected · 32 × 32 px';
  grid.innerHTML=teams.map(name=>{
