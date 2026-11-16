@@ -206,6 +206,14 @@ def init_db():
                         VALUES(?,?,?,?,?,?)""",
                         (gauntlet_id, match_no, date, map_name, times_trt[slot], times_ist[slot]))
 
+        # Re-apply official classification after built-in PMGC stages have been seeded.
+        db.execute("""UPDATE tournaments SET is_official=1 WHERE
+            upper(name) LIKE '%PMGC%' OR upper(name) LIKE '%BGIS%' OR
+            upper(name) LIKE '%BGMS%' OR upper(name) LIKE '%BMSD%' OR
+            upper(name) LIKE '%BMIC%' OR upper(name) LIKE '%BMPS%' OR
+            upper(name) LIKE '%BATTLEGROUNDS MOBILE INDIA SERIES%' OR
+            upper(name) LIKE '%BGMI PRO SERIES%'""")
+
 def admin_required(fn):
     @wraps(fn)
     def wrapped(*args, **kwargs):
