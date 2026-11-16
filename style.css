@@ -152,3 +152,7 @@ html{scroll-behavior:smooth}
 .hero>:not(.hero-player-image){position:relative;z-index:1}
 @media(max-width:700px){.hero-player-image{right:2%;top:72px;width:43%;height:230px;object-position:center 22%;opacity:.28;border-radius:12px}}
 @media(max-width:500px){.hero-player-image{right:0;top:60px;width:46%;height:195px;opacity:.22}}
+
+/* Faded Team SouL portrait watermark in hero */
+.hero-player-image{opacity:.16;mix-blend-mode:screen;border:0;box-shadow:none;filter:grayscale(.12);object-fit:contain;object-position:center}
+@media(max-width:700px){.hero-player-image{opacity:.12}}
