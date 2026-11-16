@@ -174,3 +174,45 @@ html{scroll-behavior:smooth}
 @media(max-width:500px){
   .hero-player-image{width:55%;opacity:.17}
 }
+
+
+/* Mobile usability polish */
+@media(max-width:700px){
+  html{scroll-behavior:smooth}
+  .top{position:relative;align-items:flex-start}
+  nav{display:flex;flex-wrap:nowrap;overflow-x:auto;max-width:100%;padding:3px 0 7px;white-space:nowrap;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+  nav a{flex:0 0 auto;min-height:32px;display:inline-flex;align-items:center}
+  main{width:100%;padding-left:14px;padding-right:14px}
+  .hero{padding:34px 20px;min-height:310px}
+  .hero h1{max-width:72%;font-size:clamp(36px,9vw,54px)}
+  .hero p{max-width:74%;font-size:13px;line-height:1.6}
+  .primary-link,.button{min-height:42px}
+  .section{margin:34px 0 46px}
+  .section h2,.panel h2{font-size:22px}
+  .result-card,.panel{padding:14px}
+  .table-wrap{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+  .table-wrap table{min-width:620px}
+  input,select{min-height:42px;font-size:16px}
+}
+@media(max-width:500px){
+  .brand{gap:9px}
+  .brand-logo{width:38px;height:38px}
+  .hero{padding:29px 17px;min-height:285px}
+  .hero h1{max-width:76%;font-size:clamp(33px,9vw,44px)}
+  .hero p{max-width:78%;font-size:12px}
+  .hero .eyebrow{max-width:70%;font-size:8px;letter-spacing:1.5px}
+  .primary-link{gap:10px;padding:10px 12px;font-size:9px}
+  .section h2,.panel h2{font-size:20px}
+  .results-grid,.contents-grid,.team-directory-grid{gap:8px}
+  .result-card{padding:12px}
+  .match-centre-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .match-centre-stat{min-width:0}
+  .two{grid-template-columns:1fr}
+}
+@media(max-width:360px){
+  main{padding-left:10px;padding-right:10px}
+  .hero{padding:26px 14px}
+  .hero h1{font-size:32px}
+  .hero p{max-width:82%}
+  .match-centre-summary{grid-template-columns:1fr}
+}
