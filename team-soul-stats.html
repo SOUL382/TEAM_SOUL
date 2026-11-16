@@ -76,7 +76,7 @@ function render(){
  const chosen=selected==='ALL'?allData:selected==='PMGC_TOTAL'?allData.filter(isPmgc):allData.filter(x=>String(x.id)===selected);
  const rows=chosen.flatMap(t=>t.results.map(r=>({...r,year:t.year,tournament_name:t.name,tournament_id:t.id}))).sort((a,b)=>Number(b.year)-Number(a.year)||String(b.tournament_name).localeCompare(String(a.tournament_name))||Number(b.match_number)-Number(a.match_number));
  const s=summarize(rows);
- const heading=selected==='ALL'?'ALL TOURNAMENTS · 2025 ONWARDS':selected==='PMGC_TOTAL'?'PMGC · ALL STAGES COMBINED':esc(chosen[0]?.name||'SELECTED TOURNAMENT');
+ const heading=selected==='ALL'?'ALL OFFICIAL TOURNAMENTS · 2025 ONWARDS':selected==='PMGC_TOTAL'?'PMGC · ALL STAGES COMBINED':esc(chosen[0]?.name||'SELECTED TOURNAMENT');
  $('status').innerHTML='<div class="eyebrow">'+heading+'</div><h3>'+chosen.length+' tournaments/stages represented · '+s.matches+' Team SouL match results recorded</h3><p class="muted">PMGC totals combine every PMGC stage in the selected period. Totals refresh from results saved in the tracker.</p>';
  $('statsGrid').innerHTML=[card('Total points',s.points),card('Matches recorded',s.matches),card('Total kills',s.kills),card('Placement points',s.placePts),card('Bonus points',s.bonusPts),card('WWCD wins',s.wins),card('Top 5 finishes',s.top5),card('Average points / match',s.avgPoints.toFixed(2)),card('Average placement',s.avgPlace?s.avgPlace.toFixed(2):'—')].join('');
  const best=rows.slice().sort((a,b)=>(Number(b.kills)+Number(b.placement_points)+Number(b.bonus_points||0))-(Number(a.kills)+Number(a.placement_points)+Number(a.bonus_points||0)))[0];
