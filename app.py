@@ -24,6 +24,7 @@ def init_db():
           name TEXT NOT NULL,
           game TEXT NOT NULL DEFAULT 'BGMI',
           status TEXT NOT NULL DEFAULT 'Upcoming',
+          is_official INTEGER NOT NULL DEFAULT 0,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS teams (
@@ -70,6 +71,17 @@ def init_db():
         );
         """)
         # Upgrade databases created by the earlier tracker version.
+        tournament_columns = {row["name"] for row in db.execute("PRAGMA table_info(tournaments)").fetchall()}
+        if "is_official" not in tournament_columns:
+            db.execute("ALTER TABLE tournaments ADD COLUMN is_official INTEGER NOT NULL DEFAULT 0")
+        # Automatically retain known publisher/official-circuit events; all other existing events
+        # stay hidden from public pages until an admin verifies them.
+        db.execute("""UPDATE tournaments SET is_official=1 WHERE
+            upper(name) LIKE '%PMGC%' OR upper(name) LIKE '%BGIS%' OR
+            upper(name) LIKE '%BGMS%' OR upper(name) LIKE '%BMSD%' OR
+            upper(name) LIKE '%BMIC%' OR upper(name) LIKE '%BMPS%' OR
+            upper(name) LIKE '%BATTLEGROUNDS MOBILE INDIA SERIES%' OR
+            upper(name) LIKE '%BGMI PRO SERIES%'""")
         result_columns = {row["name"] for row in db.execute("PRAGMA table_info(results)").fetchall()}
         if "bonus_points" not in result_columns:
             db.execute("ALTER TABLE results ADD COLUMN bonus_points INTEGER NOT NULL DEFAULT 0")
@@ -247,8 +259,10 @@ def admin_script():
 
 @app.route("/api/tournaments", methods=["GET"])
 def get_tournaments():
+    include_unofficial = request.args.get("include_unofficial") == "1" and session.get("admin")
+    query = "SELECT * FROM tournaments" if include_unofficial else "SELECT * FROM tournaments WHERE is_official=1"
     with connect_db() as db:
-        rows = db.execute("SELECT * FROM tournaments ORDER BY id DESC").fetchall()
+        rows = db.execute(query + " ORDER BY id DESC").fetchall()
     return jsonify([dict(r) for r in rows])
 
 @app.route("/api/tournaments", methods=["POST"])
@@ -260,16 +274,21 @@ def add_tournament():
         return error("Tournament name is required")
     game = str(data.get("game", "BGMI")).strip() or "BGMI"
     status = str(data.get("status", "Upcoming")).strip() or "Upcoming"
+    is_official = 1 if data.get("is_official") is True else 0
+    if not is_official:
+        return error("Only verified official tournaments can be added to the public tracker")
     with connect_db() as db:
-        cur = db.execute("INSERT INTO tournaments(name, game, status) VALUES(?,?,?)", (name, game, status))
+        cur = db.execute("INSERT INTO tournaments(name, game, status, is_official) VALUES(?,?,?,?)", (name, game, status, is_official))
         tid = cur.lastrowid
-    return jsonify({"id": tid, "name": name, "game": game, "status": status}), 201
+    return jsonify({"id": tid, "name": name, "game": game, "status": status, "is_official": is_official}), 201
 
 @app.route("/api/tournaments/<int:tid>", methods=["PATCH"])
 @admin_required
 def update_tournament(tid):
     data = request.get_json(silent=True) or {}
     fields = {k: str(data[k]).strip() for k in ("name", "status", "game") if k in data}
+    if "is_official" in data:
+        fields["is_official"] = 1 if data["is_official"] is True or data["is_official"] == 1 else 0
     if not fields:
         return error("No tournament fields supplied")
     sql = ", ".join(f"{k}=?" for k in fields)
