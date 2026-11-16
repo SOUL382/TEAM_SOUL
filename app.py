@@ -912,6 +912,10 @@ def health():
     return jsonify({"status": "ok"})
 
 
+@app.route("/team-soul-stats")
+def team_soul_stats_page():
+    return send_from_directory(BASE_DIR, "team-soul-stats.html")
+
 init_db()
 
 if __name__ == "__main__":
