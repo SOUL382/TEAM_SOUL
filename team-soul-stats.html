@@ -65,10 +65,10 @@ function tournamentYear(t){const match=String(t.name||'').match(/\b(20\d{2})\b/)
 function isSoulTeam(name){const n=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');return n==='soul'||n==='teamsoul'}
 function isPmgc(t){return /pmgc/i.test(String(t.name||''))}
 function summarize(rows){
- const matches=rows.length,kills=rows.reduce((s,r)=>s+Number(r.kills||0),0),placePts=rows.reduce((s,r)=>s+Number(r.placement_points||0),0),points=kills+placePts;
+ const matches=rows.length,kills=rows.reduce((s,r)=>s+Number(r.kills||0),0),placePts=rows.reduce((s,r)=>s+Number(r.placement_points||0),0),bonusPts=rows.reduce((s,r)=>s+Number(r.bonus_points||0),0),points=kills+placePts+bonusPts;
  const wins=rows.filter(r=>Number(r.placement)===1).length,top5=rows.filter(r=>Number(r.placement)<=5).length;
  const avgPlace=matches?rows.reduce((s,r)=>s+Number(r.placement||0),0)/matches:0;
- return {matches,kills,placePts,points,wins,top5,avgPlace,avgPoints:matches?points/matches:0};
+ return {matches,kills,placePts,bonusPts,points,wins,top5,avgPlace,avgPoints:matches?points/matches:0};
 }
 function card(label,value){return '<div class="stats-card"><small>'+label+'</small><strong>'+value+'</strong></div>'}
 function render(){
@@ -78,13 +78,13 @@ function render(){
  const s=summarize(rows);
  const heading=selected==='ALL'?'ALL TOURNAMENTS · 2025 ONWARDS':selected==='PMGC_TOTAL'?'PMGC · ALL STAGES COMBINED':esc(chosen[0]?.name||'SELECTED TOURNAMENT');
  $('status').innerHTML='<div class="eyebrow">'+heading+'</div><h3>'+chosen.length+' tournaments/stages represented · '+s.matches+' Team SouL match results recorded</h3><p class="muted">PMGC totals combine every PMGC stage in the selected period. Totals refresh from results saved in the tracker.</p>';
- $('statsGrid').innerHTML=[card('Total points',s.points),card('Matches recorded',s.matches),card('Total kills',s.kills),card('Placement points',s.placePts),card('WWCD wins',s.wins),card('Top 5 finishes',s.top5),card('Average points / match',s.avgPoints.toFixed(2)),card('Average placement',s.avgPlace?s.avgPlace.toFixed(2):'—')].join('');
- const best=rows.slice().sort((a,b)=>(Number(b.kills)+Number(b.placement_points))-(Number(a.kills)+Number(a.placement_points)))[0];
+ $('statsGrid').innerHTML=[card('Total points',s.points),card('Matches recorded',s.matches),card('Total kills',s.kills),card('Placement points',s.placePts),card('Bonus points',s.bonusPts),card('WWCD wins',s.wins),card('Top 5 finishes',s.top5),card('Average points / match',s.avgPoints.toFixed(2)),card('Average placement',s.avgPlace?s.avgPlace.toFixed(2):'—')].join('');
+ const best=rows.slice().sort((a,b)=>(Number(b.kills)+Number(b.placement_points)+Number(b.bonus_points||0))-(Number(a.kills)+Number(a.placement_points)+Number(a.bonus_points||0)))[0];
  const bestPlace=rows.filter(r=>Number(r.placement)>0).slice().sort((a,b)=>Number(a.placement)-Number(b.placement))[0];
  const mostKills=rows.slice().sort((a,b)=>Number(b.kills)-Number(a.kills))[0];
  const highlight=(label,r,detail)=>r?'<article class="result-card"><div class="eyebrow">'+label+'</div><h3>'+esc(r.tournament_name)+'</h3><p>Match '+r.match_number+' · '+esc(r.map_name)+'</p><strong>'+detail+'</strong></article>':'<article class="result-card"><p class="muted">Awaiting recorded results.</p></article>';
- $('highlights').innerHTML=highlight('HIGHEST MATCH POINTS',best,best?((Number(best.kills)+Number(best.placement_points))+' points · '+best.kills+' kills'):'')+highlight('BEST MATCH PLACEMENT',bestPlace,bestPlace?'#'+bestPlace.placement+' finish · '+(Number(bestPlace.kills)+Number(bestPlace.placement_points))+' points':'')+highlight('MOST KILLS IN A MATCH',mostKills,mostKills?mostKills.kills+' kills · '+(Number(mostKills.kills)+Number(mostKills.placement_points))+' points':'');
- $('history').innerHTML=rows.length?'<table class="stats-table"><thead><tr><th>YEAR</th><th>TOURNAMENT</th><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACEMENT PTS</th><th>MATCH PTS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.tournament_name)+'</td><td>'+r.match_number+'</td><td>'+esc(r.map_name)+'</td><td>#'+r.placement+'</td><td>'+r.kills+'</td><td>'+r.placement_points+'</td><td>'+(Number(r.kills)+Number(r.placement_points))+'</td></tr>').join('')+'</tbody></table>':'<div class="stats-empty">No Team SouL match results have been recorded for the selected period yet.</div>';
+ $('highlights').innerHTML=highlight('HIGHEST MATCH POINTS',best,best?((Number(best.kills)+Number(best.placement_points)+Number(best.bonus_points||0))+' points · '+best.kills+' kills · '+Number(best.bonus_points||0)+' bonus'):'')+highlight('BEST MATCH PLACEMENT',bestPlace,bestPlace?'#'+bestPlace.placement+' finish · '+(Number(bestPlace.kills)+Number(bestPlace.placement_points))+' points':'')+highlight('MOST KILLS IN A MATCH',mostKills,mostKills?mostKills.kills+' kills · '+(Number(mostKills.kills)+Number(mostKills.placement_points))+' points':'');
+ $('history').innerHTML=rows.length?'<table class="stats-table"><thead><tr><th>YEAR</th><th>TOURNAMENT</th><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACEMENT PTS</th><th>BONUS PTS</th><th>MATCH PTS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.tournament_name)+'</td><td>'+r.match_number+'</td><td>'+esc(r.map_name)+'</td><td>#'+r.placement+'</td><td>'+r.kills+'</td><td>'+r.placement_points+'</td><td>'+(Number(r.bonus_points)||0)+(r.bonus_details?' · '+esc(r.bonus_details):'')+'</td><td>'+(Number(r.kills)+Number(r.placement_points)+Number(r.bonus_points||0))+'</td></tr>').join('')+'</tbody></table>':'<div class="stats-empty">No Team SouL match results have been recorded for the selected period yet.</div>';
  $('historyNote').textContent='Showing '+rows.length+' Team SouL match records from 2025 onward. Statistics include only matches entered in this tracker.';
 }
 async function init(){
