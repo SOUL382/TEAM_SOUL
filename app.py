@@ -497,8 +497,7 @@ def qualification():
         ).fetchone()[0]
         match_rows = db.execute(
             "SELECT match_number, team_name FROM results WHERE tournament_id=?",
-            (tid,)
-        ).fetchall()
+            (tid,)        ).fetchall()
         teams_by_match = {}
         for row in match_rows:
             teams_by_match.setdefault(row["match_number"], set()).add(row["team_name"].casefold())
@@ -778,7 +777,7 @@ def grand_finals_map_selection():
                 if item:
                     item["kills"] += row["kills"]
                     item["placement_points"] += row["placement_points"]
-                        item["bonus_points"] += row["bonus_points"]
+                    item["bonus_points"] += row["bonus_points"]
                     item["total_points"] += row["kills"] + row["placement_points"] + row["bonus_points"]
         leaderboard = sorted(totals.values(), key=lambda x: (
             -x["total_points"], -x["kills"], -x["placement_points"],
