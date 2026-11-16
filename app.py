@@ -44,6 +44,8 @@ def init_db():
           placement INTEGER NOT NULL,
           kills INTEGER NOT NULL,
           placement_points INTEGER NOT NULL DEFAULT 0,
+          bonus_points INTEGER NOT NULL DEFAULT 0,
+          bonus_details TEXT NOT NULL DEFAULT '',
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
         );
@@ -68,6 +70,11 @@ def init_db():
         );
         """)
         # Upgrade databases created by the earlier tracker version.
+        result_columns = {row["name"] for row in db.execute("PRAGMA table_info(results)").fetchall()}
+        if "bonus_points" not in result_columns:
+            db.execute("ALTER TABLE results ADD COLUMN bonus_points INTEGER NOT NULL DEFAULT 0")
+        if "bonus_details" not in result_columns:
+            db.execute("ALTER TABLE results ADD COLUMN bonus_details TEXT NOT NULL DEFAULT ''")
         db.execute("CREATE INDEX IF NOT EXISTS idx_results_tournament ON results(tournament_id)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_teams_tournament ON teams(tournament_id)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_schedule_tournament ON scheduled_matches(tournament_id)")
@@ -394,16 +401,18 @@ def results_api():
         map_name = str(data["map_name"]).strip()
         team_name = str(data["team_name"]).strip()
         pp = int(data.get("placement_points", PLACEMENT_POINTS.get(placement, 0)))
-        if match < 1 or placement < 1 or kills < 0 or pp < 0 or not map_name or not team_name:
+        bonus = int(data.get("bonus_points", 0))
+        bonus_details = str(data.get("bonus_details", "")).strip()
+        if match < 1 or placement < 1 or kills < 0 or pp < 0 or bonus < 0 or not map_name or not team_name:
             return error("Check match, placement, map, team and score values")
         with connect_db() as db:
             exists = db.execute("SELECT id FROM tournaments WHERE id=?", (tid,)).fetchone()
             if not exists:
                 return error("Tournament not found", 404)
             cur = db.execute("""INSERT INTO results
-              (tournament_id,match_number,map_name,team_name,placement,kills,placement_points)
-              VALUES(?,?,?,?,?,?,?)""", (tid,match,map_name,team_name,placement,kills,pp))
-        return jsonify({"id": cur.lastrowid, "total_points": kills + pp}), 201
+              (tournament_id,match_number,map_name,team_name,placement,kills,placement_points,bonus_points,bonus_details)
+              VALUES(?,?,?,?,?,?,?,?,?)""", (tid,match,map_name,team_name,placement,kills,pp,bonus,bonus_details))
+        return jsonify({"id": cur.lastrowid, "total_points": kills + pp + bonus}), 201
     except (KeyError, ValueError, TypeError):
         return error("All score fields must be valid numbers and text")
 
@@ -449,19 +458,26 @@ def bulk_results():
                 if placement < 1 or placement > len(team_names) or placement in placements or kills < 0:
                     return error("Placements must be unique and kills cannot be negative")
                 placements.add(placement)
-                submitted[key] = (team, placement, kills)
+                try:
+                    bonus = int(item.get("bonus_points", 0))
+                except (TypeError, ValueError):
+                    return error("Bonus points must be a valid number")
+                if bonus < 0:
+                    return error("Bonus points cannot be negative")
+                bonus_details = str(item.get("bonus_details", "")).strip()
+                submitted[key] = (team, placement, kills, bonus, bonus_details)
             if len(submitted) != len(team_names) or len(placements) != len(team_names):
                 return error("Enter a unique placement for every team")
-            for team, placement, kills in submitted.values():
+            for team, placement, kills, bonus, bonus_details in submitted.values():
                 pp = PLACEMENT_POINTS.get(placement, 0)
                 db.execute(
                     "DELETE FROM results WHERE tournament_id=? AND match_number=? AND team_name=? COLLATE NOCASE",
                     (tid, match, team)
                 )
                 db.execute("""INSERT INTO results
-                    (tournament_id,match_number,map_name,team_name,placement,kills,placement_points)
-                    VALUES(?,?,?,?,?,?,?)""",
-                    (tid, match, map_name, team, placement, kills, pp)
+                    (tournament_id,match_number,map_name,team_name,placement,kills,placement_points,bonus_points,bonus_details)
+                    VALUES(?,?,?,?,?,?,?,?,?)""",
+                    (tid, match, map_name, team, placement, kills, pp, bonus, bonus_details)
                 )
         return jsonify({"ok": True, "saved": len(entries), "match_number": match})
     except (TypeError, ValueError):
@@ -493,7 +509,8 @@ def qualification():
             SELECT t.name AS team_name,
                    COALESCE(SUM(r.kills), 0) AS kills,
                    COALESCE(SUM(r.placement_points), 0) AS placement_points,
-                   COALESCE(SUM(r.kills+r.placement_points), 0) AS total_points
+                   COALESCE(SUM(r.bonus_points), 0) AS bonus_points,
+                   COALESCE(SUM(r.kills+r.placement_points+COALESCE(r.bonus_points,0)), 0) AS total_points
             FROM teams t
             LEFT JOIN results r ON r.tournament_id=t.tournament_id
                 AND r.team_name=t.name COLLATE NOCASE
@@ -542,7 +559,8 @@ def group_qualification():
             SELECT t.name AS team_name,
                    COALESCE(SUM(r.kills), 0) AS kills,
                    COALESCE(SUM(r.placement_points), 0) AS placement_points,
-                   COALESCE(SUM(r.kills+r.placement_points), 0) AS total_points
+                   COALESCE(SUM(r.bonus_points), 0) AS bonus_points,
+                   COALESCE(SUM(r.kills+r.placement_points+COALESCE(r.bonus_points,0)), 0) AS total_points
             FROM teams t
             LEFT JOIN results r ON r.tournament_id=t.tournament_id
                 AND r.team_name=t.name COLLATE NOCASE
@@ -596,7 +614,8 @@ def last_chance_qualification():
             SELECT t.name AS team_name,
                    COALESCE(SUM(r.kills), 0) AS kills,
                    COALESCE(SUM(r.placement_points), 0) AS placement_points,
-                   COALESCE(SUM(r.kills+r.placement_points), 0) AS total_points
+                   COALESCE(SUM(r.bonus_points), 0) AS bonus_points,
+                   COALESCE(SUM(r.kills+r.placement_points+COALESCE(r.bonus_points,0)), 0) AS total_points
             FROM teams t
             LEFT JOIN results r ON r.tournament_id=t.tournament_id
                 AND r.team_name=t.name COLLATE NOCASE
@@ -648,7 +667,7 @@ def smash_rule():
         }
         def totals_through(last_match):
             totals = {name.casefold(): {"team_name": name, "kills": 0,
-                      "placement_points": 0, "total_points": 0} for name in teams}
+                      "placement_points": 0, "bonus_points": 0, "total_points": 0} for name in teams}
             for match_no, rows in by_match.items():
                 if match_no > last_match or match_no not in complete:
                     continue
@@ -657,7 +676,8 @@ def smash_rule():
                     if item:
                         item["kills"] += row["kills"]
                         item["placement_points"] += row["placement_points"]
-                        item["total_points"] += row["kills"] + row["placement_points"]
+                        item["bonus_points"] += row["bonus_points"]
+                        item["total_points"] += row["kills"] + row["placement_points"] + row["bonus_points"]
             return sorted(totals.values(), key=lambda x: (
                 -x["total_points"], -x["kills"], -x["placement_points"],
                 x["team_name"].casefold()
@@ -749,7 +769,7 @@ def grand_finals_map_selection():
         while completed_count + 1 in complete:
             completed_count += 1
         totals = {name.casefold(): {"team_name": name, "kills": 0,
-                  "placement_points": 0, "total_points": 0} for name in teams}
+                  "placement_points": 0, "bonus_points": 0, "total_points": 0} for name in teams}
         for match_no, match_rows in by_match.items():
             if match_no not in complete or match_no > 18:
                 continue
@@ -758,7 +778,8 @@ def grand_finals_map_selection():
                 if item:
                     item["kills"] += row["kills"]
                     item["placement_points"] += row["placement_points"]
-                    item["total_points"] += row["kills"] + row["placement_points"]
+                        item["bonus_points"] += row["bonus_points"]
+                    item["total_points"] += row["kills"] + row["placement_points"] + row["bonus_points"]
         leaderboard = sorted(totals.values(), key=lambda x: (
             -x["total_points"], -x["kills"], -x["placement_points"],
             x["team_name"].casefold()
@@ -844,6 +865,7 @@ def standings():
                    t.highlighted AS highlighted,
                    COALESCE(SUM(r.kills), 0) AS total_kills,
                    COALESCE(SUM(r.placement_points), 0) AS placement_points,
+                   COALESCE(SUM(r.bonus_points), 0) AS bonus_points,
                    COALESCE(SUM(r.kills + r.placement_points), 0) AS total_points,
                    COUNT(DISTINCT r.match_number) AS matches_played
             FROM teams t
@@ -885,9 +907,11 @@ def manage_result(result_id):
     data = request.get_json(silent=True) or {}
     allowed = {}
     try:
-        for key in ("match_number", "placement", "kills", "placement_points"):
+        for key in ("match_number", "placement", "kills", "placement_points", "bonus_points"):
             if key in data:
                 allowed[key] = int(data[key])
+        if "bonus_details" in data:
+            allowed["bonus_details"] = str(data["bonus_details"]).strip()
     except (TypeError, ValueError):
         return error("Score values must be valid numbers")
     if not allowed:
@@ -895,7 +919,8 @@ def manage_result(result_id):
     if (allowed.get("match_number", 1) < 1 or
         allowed.get("placement", 1) < 1 or
         allowed.get("kills", 0) < 0 or
-        allowed.get("placement_points", 0) < 0):
+        allowed.get("placement_points", 0) < 0 or
+        allowed.get("bonus_points", 0) < 0):
         return error("Invalid score values")
     with connect_db() as db:
         cur = db.execute(
