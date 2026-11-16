@@ -147,12 +147,30 @@ html{scroll-behavior:smooth}
 #soulFinalsHistorySection{scroll-margin-top:22px}
 @media(max-width:500px){.history-jump{padding:9px 10px;font-size:9px}.section-head:has(.history-jump){align-items:center;flex-direction:row}}
 
-/* Team SouL homepage hero image */
-.hero-player-image{position:absolute;z-index:0;right:7%;top:35px;width:min(34%,340px);height:300px;object-fit:cover;object-position:center 24%;border:1px solid #78a99b66;border-radius:14px;box-shadow:0 0 55px #55d6d033;pointer-events:none}
+/* Integrated Team SouL hero watermark */
+.hero{isolation:isolate}
+.hero-player-image{
+  position:absolute;
+  z-index:0;
+  top:0;
+  right:0;
+  width:min(43%,430px);
+  height:100%;
+  object-fit:contain;
+  object-position:right center;
+  opacity:.30;
+  border:0;
+  border-radius:0;
+  box-shadow:none;
+  filter:none;
+  pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 24%,#000 58%);
+  mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.5) 24%,#000 58%);
+}
 .hero>:not(.hero-player-image){position:relative;z-index:1}
-@media(max-width:700px){.hero-player-image{right:2%;top:72px;width:43%;height:230px;object-position:center 22%;opacity:.28;border-radius:12px}}
-@media(max-width:500px){.hero-player-image{right:0;top:60px;width:46%;height:195px;opacity:.22}}
-
-/* Faded Team SouL portrait watermark in hero */
-.hero-player-image{opacity:.16;mix-blend-mode:screen;border:0;box-shadow:none;filter:grayscale(.12);object-fit:contain;object-position:center}
-@media(max-width:700px){.hero-player-image{opacity:.12}}
+@media(max-width:700px){
+  .hero-player-image{width:52%;opacity:.20;object-position:right center}
+}
+@media(max-width:500px){
+  .hero-player-image{width:55%;opacity:.17}
+}
