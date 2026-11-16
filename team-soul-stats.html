@@ -62,6 +62,8 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let allData=[];
 function tournamentYear(t){const match=String(t.name||'').match(/\b(20\d{2})\b/);if(match)return Number(match[1]);const created=String(t.created_at||'').slice(0,4);return /^20\d{2}$/.test(created)?Number(created):0}
+function isSoulTeam(name){const n=String(name||'').toLowerCase().replace(/[^a-z0-9]/g,'');return n==='soul'||n==='teamsoul'}
+function isPmgc(t){return /pmgc/i.test(String(t.name||''))}
 function summarize(rows){
  const matches=rows.length,kills=rows.reduce((s,r)=>s+Number(r.kills||0),0),placePts=rows.reduce((s,r)=>s+Number(r.placement_points||0),0),points=kills+placePts;
  const wins=rows.filter(r=>Number(r.placement)===1).length,top5=rows.filter(r=>Number(r.placement)<=5).length;
@@ -71,10 +73,11 @@ function summarize(rows){
 function card(label,value){return '<div class="stats-card"><small>'+label+'</small><strong>'+value+'</strong></div>'}
 function render(){
  const selected=$('tournamentFilter').value;
- const chosen=selected==='ALL'?allData:allData.filter(x=>String(x.id)===selected);
- const rows=chosen.flatMap(t=>t.results.map(r=>({...r,tournament_name:t.name,tournament_id:t.id}))).sort((a,b)=>Number(b.year)-Number(a.year)||String(b.tournament_name).localeCompare(String(a.tournament_name))||Number(b.match_number)-Number(a.match_number));
+ const chosen=selected==='ALL'?allData:selected==='PMGC_TOTAL'?allData.filter(isPmgc):allData.filter(x=>String(x.id)===selected);
+ const rows=chosen.flatMap(t=>t.results.map(r=>({...r,year:t.year,tournament_name:t.name,tournament_id:t.id}))).sort((a,b)=>Number(b.year)-Number(a.year)||String(b.tournament_name).localeCompare(String(a.tournament_name))||Number(b.match_number)-Number(a.match_number));
  const s=summarize(rows);
- $('status').innerHTML='<div class="eyebrow">'+(selected==='ALL'?'ALL TOURNAMENTS · 2025 ONWARDS':esc(chosen[0]?.name||'SELECTED TOURNAMENT'))+'</div><h3>'+chosen.length+' tournaments represented · '+s.matches+' match results recorded</h3><p class="muted">Totals refresh automatically from the tracker whenever tournament results are updated by an admin.</p>';
+ const heading=selected==='ALL'?'ALL TOURNAMENTS · 2025 ONWARDS':selected==='PMGC_TOTAL'?'PMGC · ALL STAGES COMBINED':esc(chosen[0]?.name||'SELECTED TOURNAMENT');
+ $('status').innerHTML='<div class="eyebrow">'+heading+'</div><h3>'+chosen.length+' tournaments/stages represented · '+s.matches+' Team SouL match results recorded</h3><p class="muted">PMGC totals combine every PMGC stage in the selected period. Totals refresh from results saved in the tracker.</p>';
  $('statsGrid').innerHTML=[card('Total points',s.points),card('Matches recorded',s.matches),card('Total kills',s.kills),card('Placement points',s.placePts),card('WWCD wins',s.wins),card('Top 5 finishes',s.top5),card('Average points / match',s.avgPoints.toFixed(2)),card('Average placement',s.avgPlace?s.avgPlace.toFixed(2):'—')].join('');
  const best=rows.slice().sort((a,b)=>(Number(b.kills)+Number(b.placement_points))-(Number(a.kills)+Number(a.placement_points)))[0];
  const bestPlace=rows.filter(r=>Number(r.placement)>0).slice().sort((a,b)=>Number(a.placement)-Number(b.placement))[0];
@@ -86,15 +89,26 @@ function render(){
 }
 async function init(){
  try{
-  const tournaments=await fetch('/api/tournaments').then(r=>r.json());
+  const response=await fetch('/api/tournaments',{cache:'no-store'});
+  if(!response.ok)throw new Error('Tournament API returned HTTP '+response.status);
+  const tournaments=await response.json();
+  if(!Array.isArray(tournaments))throw new Error('Tournament API did not return a list');
   const eligible=tournaments.filter(t=>tournamentYear(t)>=2025);
-  const loaded=await Promise.all(eligible.map(async t=>({id:t.id,name:t.name,year:tournamentYear(t),created_at:t.created_at,results:await fetch('/api/results?tournament_id='+t.id).then(r=>r.json())})));
-  allData=loaded.map(t=>({...t,results:t.results.filter(r=>String(r.team_name||'').trim().toLowerCase()==='team soul')}));
+  const loaded=await Promise.all(eligible.map(async t=>{
+   const response=await fetch('/api/results?tournament_id='+encodeURIComponent(t.id),{cache:'no-store'});
+   if(!response.ok)throw new Error('Results API failed for '+t.name+' (HTTP '+response.status+')');
+   const results=await response.json();
+   if(!Array.isArray(results))throw new Error('Results for '+t.name+' were not returned as a list');
+   return {id:t.id,name:t.name,year:tournamentYear(t),created_at:t.created_at,results};
+  }));
+  allData=loaded.map(t=>({...t,results:t.results.filter(r=>isSoulTeam(r.team_name))}));
   const select=$('tournamentFilter');
-  allData.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;select.append(o)});
+  allData.filter(t=>!isPmgc(t)).forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;select.append(o)});
+  if(allData.some(isPmgc)){const o=document.createElement('option');o.value='PMGC_TOTAL';o.textContent='PMGC · Total statistics (all stages)';select.append(o)}
   select.addEventListener('change',render);
   render();
   if(!allData.length)$('status').innerHTML='<p class="muted">No tournaments dated 2025 or later are available in the tracker yet.</p>';
+  else if(!allData.some(t=>t.results.length))$('status').innerHTML='<p class="muted">Tournament data loaded, but no Team SouL results were found. Check that the Team SouL match results have been saved in Admin.</p>';
  }catch(e){$('status').innerHTML='<p class="muted">Could not load statistics: '+esc(e.message)+'</p>'}
 }
 init();
