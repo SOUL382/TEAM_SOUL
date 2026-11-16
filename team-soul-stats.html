@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team SouL Statistics Since 2025 | BGMI Tournament Performance</title>
+<meta name="description" content="Explore Team SouL BGMI tournament statistics since 2025, including match results, kills, points, average placement, wins and best performances.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://team-soul-qzgq.onrender.com/team-soul-stats">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Team SouL">
+<meta property="og:title" content="Team SouL Statistics Since 2025">
+<meta property="og:description" content="Team SouL tournament performance, match history and statistics from 2025 onward.">
+<meta property="og:url" content="https://team-soul-qzgq.onrender.com/team-soul-stats">
+<link rel="stylesheet" href="/style.css">
+<style>
+.stats-hero{padding:28px;border:1px solid var(--line);border-radius:12px;background:linear-gradient(120deg,#17251d,#111a23);margin:28px 0}
+.stats-hero h1{font-size:clamp(27px,5vw,42px);margin:8px 0}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:16px 0}
+.stats-card{padding:16px;border:1px solid var(--line);border-radius:9px;background:#111a23;min-width:0}
+.stats-card small{display:block;color:var(--muted);font-size:10px;letter-spacing:1px;text-transform:uppercase}
+.stats-card strong{display:block;font-size:clamp(20px,3vw,29px);margin-top:8px;color:var(--lime);overflow-wrap:anywhere}
+.stats-toolbar{display:flex;align-items:end;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:18px 0}
+.stats-toolbar label{max-width:360px;width:100%}
+.stats-highlights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.stats-highlights .result-card{min-width:0}
+.stats-table{min-width:720px}
+.stats-table td:last-child{color:var(--lime);font-weight:800}
+.stats-empty{padding:24px;text-align:center;color:var(--muted)}
+@media(max-width:650px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stats-highlights{grid-template-columns:1fr}.stats-hero{padding:20px}.stats-card{padding:12px}}
+</style>
+</head>
+<body>
+<header class="top">
+<a class="brand" href="/"><img class="brand-logo" src="/static/images/teams/61px-Team_Soul_2019_allmode.png" alt="Team SouL logo"><span>TEAM <b>SOUL</b><small>BGMI ESPORTS TRACKER</small></span></a>
+<nav><a href="/">Home</a><a href="/grand-finals-history">Grand Finals History</a><a href="/admin">Admin</a></nav>
+</header>
+<main>
+<section class="stats-hero">
+<div class="eyebrow">TEAM SOUL · 2025 ONWARDS</div>
+<h1>Team SouL Statistics 💚💙</h1>
+<p class="muted">Tournament performance, match-by-match history and standout moments across every tournament in this tracker from 2025 onward.</p>
+</section>
+<section class="section">
+<div class="stats-toolbar"><div><div class="eyebrow">CAREER PERFORMANCE</div><h2>All-tournament overview</h2></div><label for="tournamentFilter">Choose tournament<select id="tournamentFilter"><option value="ALL">All tournaments · 2025 onwards</option></select></label></div>
+<div id="status" class="result-card"><p class="muted">Loading Team SouL statistics…</p></div>
+<div id="statsGrid" class="stats-grid"></div>
+</section>
+<section class="section">
+<div class="section-head"><div><div class="eyebrow">STANDOUT MOMENTS</div><h2>Best performances</h2></div></div>
+<div id="highlights" class="stats-highlights"></div>
+</section>
+<section class="section">
+<div class="section-head"><div><div class="eyebrow">MATCH-BY-MATCH</div><h2>Team SouL match history</h2></div></div>
+<div class="table-wrap" id="history"><div class="stats-empty">Match history will appear when results are available.</div></div>
+<p class="note" id="historyNote">Statistics are calculated from results recorded in this tracker. Tournaments without recorded Team SouL results will not contribute to the totals.</p>
+</section>
+</main>
+<footer>Independent community tracker · Not affiliated with Team SouL or KRAFTON.</footer>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let allData=[];
+function tournamentYear(t){const match=String(t.name||'').match(/\b(20\d{2})\b/);if(match)return Number(match[1]);const created=String(t.created_at||'').slice(0,4);return /^20\d{2}$/.test(created)?Number(created):0}
+function summarize(rows){
+ const matches=rows.length,kills=rows.reduce((s,r)=>s+Number(r.kills||0),0),placePts=rows.reduce((s,r)=>s+Number(r.placement_points||0),0),points=kills+placePts;
+ const wins=rows.filter(r=>Number(r.placement)===1).length,top5=rows.filter(r=>Number(r.placement)<=5).length;
+ const avgPlace=matches?rows.reduce((s,r)=>s+Number(r.placement||0),0)/matches:0;
+ return {matches,kills,placePts,points,wins,top5,avgPlace,avgPoints:matches?points/matches:0};
+}
+function card(label,value){return '<div class="stats-card"><small>'+label+'</small><strong>'+value+'</strong></div>'}
+function render(){
+ const selected=$('tournamentFilter').value;
+ const chosen=selected==='ALL'?allData:allData.filter(x=>String(x.id)===selected);
+ const rows=chosen.flatMap(t=>t.results.map(r=>({...r,tournament_name:t.name,tournament_id:t.id}))).sort((a,b)=>Number(b.year)-Number(a.year)||String(b.tournament_name).localeCompare(String(a.tournament_name))||Number(b.match_number)-Number(a.match_number));
+ const s=summarize(rows);
+ $('status').innerHTML='<div class="eyebrow">'+(selected==='ALL'?'ALL TOURNAMENTS · 2025 ONWARDS':esc(chosen[0]?.name||'SELECTED TOURNAMENT'))+'</div><h3>'+chosen.length+' tournaments represented · '+s.matches+' match results recorded</h3><p class="muted">Totals refresh automatically from the tracker whenever tournament results are updated by an admin.</p>';
+ $('statsGrid').innerHTML=[card('Total points',s.points),card('Matches recorded',s.matches),card('Total kills',s.kills),card('Placement points',s.placePts),card('WWCD wins',s.wins),card('Top 5 finishes',s.top5),card('Average points / match',s.avgPoints.toFixed(2)),card('Average placement',s.avgPlace?s.avgPlace.toFixed(2):'—')].join('');
+ const best=rows.slice().sort((a,b)=>(Number(b.kills)+Number(b.placement_points))-(Number(a.kills)+Number(a.placement_points)))[0];
+ const bestPlace=rows.filter(r=>Number(r.placement)>0).slice().sort((a,b)=>Number(a.placement)-Number(b.placement))[0];
+ const mostKills=rows.slice().sort((a,b)=>Number(b.kills)-Number(a.kills))[0];
+ const highlight=(label,r,detail)=>r?'<article class="result-card"><div class="eyebrow">'+label+'</div><h3>'+esc(r.tournament_name)+'</h3><p>Match '+r.match_number+' · '+esc(r.map_name)+'</p><strong>'+detail+'</strong></article>':'<article class="result-card"><p class="muted">Awaiting recorded results.</p></article>';
+ $('highlights').innerHTML=highlight('HIGHEST MATCH POINTS',best,best?((Number(best.kills)+Number(best.placement_points))+' points · '+best.kills+' kills'):'')+highlight('BEST MATCH PLACEMENT',bestPlace,bestPlace?'#'+bestPlace.placement+' finish · '+(Number(bestPlace.kills)+Number(bestPlace.placement_points))+' points':'')+highlight('MOST KILLS IN A MATCH',mostKills,mostKills?mostKills.kills+' kills · '+(Number(mostKills.kills)+Number(mostKills.placement_points))+' points':'');
+ $('history').innerHTML=rows.length?'<table class="stats-table"><thead><tr><th>YEAR</th><th>TOURNAMENT</th><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACEMENT PTS</th><th>MATCH PTS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.tournament_name)+'</td><td>'+r.match_number+'</td><td>'+esc(r.map_name)+'</td><td>#'+r.placement+'</td><td>'+r.kills+'</td><td>'+r.placement_points+'</td><td>'+(Number(r.kills)+Number(r.placement_points))+'</td></tr>').join('')+'</tbody></table>':'<div class="stats-empty">No Team SouL match results have been recorded for the selected period yet.</div>';
+ $('historyNote').textContent='Showing '+rows.length+' Team SouL match records from 2025 onward. Statistics include only matches entered in this tracker.';
+}
+async function init(){
+ try{
+  const tournaments=await fetch('/api/tournaments').then(r=>r.json());
+  const eligible=tournaments.filter(t=>tournamentYear(t)>=2025);
+  const loaded=await Promise.all(eligible.map(async t=>({id:t.id,name:t.name,year:tournamentYear(t),created_at:t.created_at,results:await fetch('/api/results?tournament_id='+t.id).then(r=>r.json())})));
+  allData=loaded.map(t=>({...t,results:t.results.filter(r=>String(r.team_name||'').trim().toLowerCase()==='team soul')}));
+  const select=$('tournamentFilter');
+  allData.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.name;select.append(o)});
+  select.addEventListener('change',render);
+  render();
+  if(!allData.length)$('status').innerHTML='<p class="muted">No tournaments dated 2025 or later are available in the tracker yet.</p>';
+ }catch(e){$('status').innerHTML='<p class="muted">Could not load statistics: '+esc(e.message)+'</p>'}
+}
+init();
+</script>
+</body>
+</html>
