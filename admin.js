@@ -77,7 +77,7 @@ async function loadBulkSetup(){
    api('/api/schedule?tournament_id='+tid)
   ]);
   $('bulkMatch').innerHTML='<option value="">Choose match</option>'+schedule.map(m=>'<option value="'+m.match_number+'" data-map="'+esc(m.map_name)+'">'+('Match '+m.match_number+' · '+esc(m.map_name)+' · '+m.match_date)+'</option>').join('');
-  $('bulkScoreRows').innerHTML=teams.length?'<div class="bulk-score-head"><span>TEAM</span><span>PLACE</span><span>KILLS</span><span>PTS</span></div>'+teams.map(t=>'<div class="bulk-score-row" data-team="'+esc(t.name)+'"><b>'+esc(t.name)+'</b><input class="bulk-place" type="number" min="1" max="'+teams.length+'" placeholder="—" aria-label="'+esc(t.name)+' placement"><input class="bulk-kills" type="number" min="0" placeholder="0" value="0" aria-label="'+esc(t.name)+' kills"><strong class="bulk-points">0</strong></div>').join(''):'<p class="muted">Register teams first.</p>';
+  $('bulkScoreRows').innerHTML=teams.length?'<div class="bulk-score-head"><span>TEAM</span><span>PLACE</span><span>KILLS</span><span>BONUS</span><span>PTS</span></div>'+teams.map(t=>'<div class="bulk-score-row" data-team="'+esc(t.name)+'"><b>'+esc(t.name)+'</b><input class="bulk-place" type="number" min="1" max="'+teams.length+'" placeholder="—" aria-label="'+esc(t.name)+' placement"><input class="bulk-kills" type="number" min="0" placeholder="0" value="0" aria-label="'+esc(t.name)+' kills"><input class="bulk-bonus" type="number" min="0" placeholder="0" value="0" aria-label="'+esc(t.name)+' bonus points"><strong class="bulk-points">0</strong></div>').join(''):'<p class="muted">Register teams first.</p>';
   $('saveBulkScores').disabled=!teams.length||!schedule.length;
  }catch(err){$('bulkScoreRows').innerHTML='<p class="message">'+esc(err.message)+'</p>'}
 }
