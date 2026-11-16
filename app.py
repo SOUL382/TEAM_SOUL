@@ -866,7 +866,7 @@ def standings():
                    COALESCE(SUM(r.kills), 0) AS total_kills,
                    COALESCE(SUM(r.placement_points), 0) AS placement_points,
                    COALESCE(SUM(r.bonus_points), 0) AS bonus_points,
-                   COALESCE(SUM(r.kills + r.placement_points), 0) AS total_points,
+                   COALESCE(SUM(r.kills + r.placement_points + COALESCE(r.bonus_points,0)), 0) AS total_points,
                    COUNT(DISTINCT r.match_number) AS matches_played
             FROM teams t
             LEFT JOIN results r
