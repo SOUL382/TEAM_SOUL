@@ -92,8 +92,11 @@ def init_db():
         # Verified Team SouL annual championship history. Summary totals are kept
         # separate from match-wise results so missing scorecards are never fabricated.
         history_rows = [
-            (2025, "BGIS", "BGIS 2025", "15th", None, None, None, None, None, "placement_verified", "https://liquipedia.net/pubgmobile/Team_SouL/Results"),
+            (2025, "BGIS", "BGIS 2025", "15th", 18, 1, 56, 16, 72, "summary_verified", "https://www.esportsverse.live/tournaments/bgmi/battlegrounds-mobile-india-series-2025"),
             (2025, "BMPS", "BMPS 2025", "29th", None, None, None, None, None, "placement_verified", "https://liquipedia.net/pubgmobile/Team_SouL/Results"),
+            (2025, "BMPS_R1", "BMPS 2025 · Round 1", "2nd · Round 1", 12, 2, 96, 50, 146, "summary_verified", "https://community.iqoo.com/in/thread/96018"),
+            (2025, "BMPS_SF1", "BMPS 2025 · Semi-Finals Week 1", "13th · Week 1", 12, 1, 48, 30, 78, "summary_verified", "https://www.16score.com/bgmi-series/bmps-2025/semi-finals-week-1/points-table"),
+            (2025, "BMPS_SF2", "BMPS 2025 · Semi-Finals Week 2", "21st · Week 2", 16, 0, 55, 10, 65, "summary_verified", "https://www.16score.com/bgmi-series/bmps-2025/semi-finals-week-2/points-table"),
             (2025, "BMSD", "BMSD 2025", "3rd", 18, 1, 94, 40, 134, "summary_verified", "https://liquipedia.net/pubgmobile/Battlegrounds_Mobile_India_Showdown/2025"),
             (2025, "BMIC", "BMIC 2025", "9th", 18, 1, 79, 32, 111, "summary_verified", "https://esportsamaze.com/bgmi/tournaments/battlegrounds-mobile-india-international-cup-2025/standings"),
             (2026, "BGIS", "BGIS 2026", "1st", 18, 2, 119, 54, 173, "summary_verified", "https://www.16score.com/bgmi-series/bgis-2026/points-table"),
@@ -304,7 +307,7 @@ def admin_script():
 @app.route("/api/team-soul-history", methods=["GET"])
 def team_soul_history_api():
     with connect_db() as db:
-        rows = db.execute("SELECT * FROM team_soul_history ORDER BY year DESC, CASE event_code WHEN 'BGIS' THEN 1 WHEN 'BMPS' THEN 2 WHEN 'BMSD' THEN 3 WHEN 'BMIC' THEN 4 ELSE 5 END").fetchall()
+        rows = db.execute("SELECT * FROM team_soul_history ORDER BY year DESC, CASE event_code WHEN 'BGIS' THEN 1 WHEN 'BMPS' THEN 2 WHEN 'BMPS_R1' THEN 3 WHEN 'BMPS_SF1' THEN 4 WHEN 'BMPS_SF2' THEN 5 WHEN 'BMSD' THEN 6 WHEN 'BMIC' THEN 7 ELSE 8 END").fetchall()
     return jsonify([dict(row) for row in rows])
 
 @app.route("/api/tournaments", methods=["GET"])
