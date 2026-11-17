@@ -61,6 +61,21 @@ def init_db():
           UNIQUE(tournament_id, match_number),
           FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE
         );
+        CREATE TABLE IF NOT EXISTS team_soul_history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          year INTEGER NOT NULL,
+          event_code TEXT NOT NULL,
+          event_name TEXT NOT NULL,
+          final_placement TEXT NOT NULL,
+          matches INTEGER,
+          wwcd INTEGER,
+          finishes INTEGER,
+          placement_points INTEGER,
+          total_points INTEGER,
+          data_status TEXT NOT NULL DEFAULT 'placement_verified',
+          source_url TEXT NOT NULL DEFAULT '',
+          UNIQUE(year, event_code)
+        );
         CREATE TABLE IF NOT EXISTS grand_finals_map_selection (
           tournament_id INTEGER PRIMARY KEY,
           showmatch_winner TEXT NOT NULL,
@@ -74,6 +89,27 @@ def init_db():
         tournament_columns = {row["name"] for row in db.execute("PRAGMA table_info(tournaments)").fetchall()}
         if "is_official" not in tournament_columns:
             db.execute("ALTER TABLE tournaments ADD COLUMN is_official INTEGER NOT NULL DEFAULT 0")
+        # Verified Team SouL annual championship history. Summary totals are kept
+        # separate from match-wise results so missing scorecards are never fabricated.
+        history_rows = [
+            (2025, "BGIS", "BGIS 2025", "15th", None, None, None, None, None, "placement_verified", "https://liquipedia.net/pubgmobile/Team_SouL/Results"),
+            (2025, "BMPS", "BMPS 2025", "29th", None, None, None, None, None, "placement_verified", "https://liquipedia.net/pubgmobile/Team_SouL/Results"),
+            (2025, "BMSD", "BMSD 2025", "3rd", 18, 1, 94, 40, 134, "summary_verified", "https://liquipedia.net/pubgmobile/Battlegrounds_Mobile_India_Showdown/2025"),
+            (2025, "BMIC", "BMIC 2025", "9th", 18, 1, 79, 32, 111, "summary_verified", "https://esportsamaze.com/bgmi/tournaments/battlegrounds-mobile-india-international-cup-2025/standings"),
+            (2026, "BGIS", "BGIS 2026", "1st", 18, 2, 119, 54, 173, "summary_verified", "https://www.16score.com/bgmi-series/bgis-2026/points-table"),
+            (2026, "BMPS", "BMPS 2026", "13th", 18, 1, 65, 30, 95, "summary_verified", "https://esportstats.in/tournaments/BMPS2026"),
+            (2026, "BMSD", "BMSD 2026", "1st", 18, 2, 103, 52, 155, "summary_verified", "https://esportsamaze.com/bgmi/tournaments/battlegrounds-mobile-india-showdown-2026/standings"),
+            (2026, "BMIC", "BMIC 2026", "12th", 18, 0, 69, 18, 87, "summary_verified", "https://www.talkesport.com/wiki/bgmi/bmic/2026/")
+        ]
+        for history in history_rows:
+            db.execute("""INSERT INTO team_soul_history
+                (year,event_code,event_name,final_placement,matches,wwcd,finishes,placement_points,total_points,data_status,source_url)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                ON CONFLICT(year,event_code) DO UPDATE SET
+                event_name=excluded.event_name, final_placement=excluded.final_placement,
+                matches=excluded.matches, wwcd=excluded.wwcd, finishes=excluded.finishes,
+                placement_points=excluded.placement_points, total_points=excluded.total_points,
+                data_status=excluded.data_status, source_url=excluded.source_url""", history)
         # Automatically retain known publisher/official-circuit events; all other existing events
         # stay hidden from public pages until an admin verifies them.
         db.execute("""UPDATE tournaments SET is_official=1 WHERE
@@ -264,6 +300,12 @@ def public_script():
 @app.route("/admin.js")
 def admin_script():
     return send_from_directory(BASE_DIR, "admin.js", mimetype="application/javascript")
+
+@app.route("/api/team-soul-history", methods=["GET"])
+def team_soul_history_api():
+    with connect_db() as db:
+        rows = db.execute("SELECT * FROM team_soul_history ORDER BY year DESC, CASE event_code WHEN 'BGIS' THEN 1 WHEN 'BMPS' THEN 2 WHEN 'BMSD' THEN 3 WHEN 'BMIC' THEN 4 ELSE 5 END").fetchall()
+    return jsonify([dict(row) for row in rows])
 
 @app.route("/api/tournaments", methods=["GET"])
 def get_tournaments():
