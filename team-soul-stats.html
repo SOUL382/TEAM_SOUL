@@ -47,6 +47,11 @@
 <div id="statsGrid" class="stats-grid"></div>
 </section>
 <section class="section">
+<div class="section-head"><div><div class="eyebrow">OFFICIAL HISTORY · 2025–2026</div><h2>Team SouL championship record</h2></div></div>
+<p class="muted">Verified final placements and published tournament totals. Match-by-match records are shown separately below only when scorecards are available.</p>
+<div class="table-wrap" id="officialHistory"><div class="stats-empty">Loading official tournament history…</div></div>
+</section>
+<section class="section">
 <div class="section-head"><div><div class="eyebrow">STANDOUT MOMENTS</div><h2>Best performances</h2></div></div>
 <div id="highlights" class="stats-highlights"></div>
 </section>
@@ -87,6 +92,18 @@ function render(){
  $('history').innerHTML=rows.length?'<table class="stats-table"><thead><tr><th>YEAR</th><th>TOURNAMENT</th><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACEMENT PTS</th><th>BONUS PTS</th><th>MATCH PTS</th></tr></thead><tbody>'+rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.tournament_name)+'</td><td>'+r.match_number+'</td><td>'+esc(r.map_name)+'</td><td>#'+r.placement+'</td><td>'+r.kills+'</td><td>'+r.placement_points+'</td><td>'+(Number(r.bonus_points)||0)+(r.bonus_details?' · '+esc(r.bonus_details):'')+'</td><td>'+(Number(r.kills)+Number(r.placement_points)+Number(r.bonus_points||0))+'</td></tr>').join('')+'</tbody></table>':'<div class="stats-empty">No Team SouL match results have been recorded for the selected period yet.</div>';
  $('historyNote').textContent='Showing '+rows.length+' Team SouL match records from 2025 onward. Statistics include only matches entered in this tracker.';
 }
+async function loadOfficialHistory(){
+ const target=$('officialHistory');
+ try{
+  const response=await fetch('/api/team-soul-history',{cache:'no-store'});
+  if(!response.ok)throw new Error('History API returned HTTP '+response.status);
+  const rows=await response.json();
+  target.innerHTML='<table class="stats-table"><thead><tr><th>YEAR</th><th>EVENT</th><th>FINAL PLACE</th><th>MATCHES</th><th>WWCD</th><th>FINISHES</th><th>PLACEMENT PTS</th><th>TOTAL PTS</th><th>DATA</th></tr></thead><tbody>'+
+   rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.event_name)+'</td><td>'+esc(r.final_placement)+'</td><td>'+(r.matches??'—')+'</td><td>'+(r.wwcd??'—')+'</td><td>'+(r.finishes??'—')+'</td><td>'+(r.placement_points??'—')+'</td><td>'+(r.total_points??'—')+'</td><td><a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">Source</a> · '+(r.data_status==='summary_verified'?'Totals verified':'Placement verified')+'</td></tr>').join('')+
+   '</tbody></table>';
+ }catch(e){target.innerHTML='<div class="stats-empty">Could not load official history: '+esc(e.message)+'</div>'}
+}
+loadOfficialHistory();
 async function init(){
  try{
   const response=await fetch('/api/tournaments',{cache:'no-store'});
