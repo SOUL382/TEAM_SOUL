@@ -98,7 +98,7 @@ async function loadOfficialHistory(){
   const response=await fetch('/api/team-soul-history',{cache:'no-store'});
   if(!response.ok)throw new Error('History API returned HTTP '+response.status);
   const rows=await response.json();
-  target.innerHTML='<table class="stats-table"><thead><tr><th>YEAR</th><th>EVENT</th><th>FINAL PLACE</th><th>MATCHES</th><th>WWCD</th><th>FINISHES</th><th>PLACEMENT PTS</th><th>TOTAL PTS</th><th>DATA</th></tr></thead><tbody>'+
+  target.innerHTML='<table class="stats-table"><thead><tr><th>YEAR</th><th>EVENT</th><th>PLACEMENT / STAGE</th><th>MATCHES</th><th>WWCD</th><th>FINISHES</th><th>PLACEMENT PTS</th><th>TOTAL PTS</th><th>DATA</th></tr></thead><tbody>'+
    rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.event_name)+'</td><td>'+esc(r.final_placement)+'</td><td>'+(r.matches??'—')+'</td><td>'+(r.wwcd??'—')+'</td><td>'+(r.finishes??'—')+'</td><td>'+(r.placement_points??'—')+'</td><td>'+(r.total_points??'—')+'</td><td><a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">Source</a> · '+(r.data_status==='summary_verified'?'Totals verified':'Placement verified')+'</td></tr>').join('')+
    '</tbody></table>';
  }catch(e){target.innerHTML='<div class="stats-empty">Could not load official history: '+esc(e.message)+'</div>'}
