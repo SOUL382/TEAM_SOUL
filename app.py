@@ -100,7 +100,8 @@ def init_db():
             (2025, "BMSD", "BMSD 2025", "3rd", 18, 1, 94, 40, 134, "summary_verified", "https://liquipedia.net/pubgmobile/Battlegrounds_Mobile_India_Showdown/2025"),
             (2025, "BMIC", "BMIC 2025", "9th", 18, 1, 79, 32, 111, "summary_verified", "https://esportsamaze.com/bgmi/tournaments/battlegrounds-mobile-india-international-cup-2025/standings"),
             (2026, "BGIS", "BGIS 2026", "1st", 18, 2, 119, 54, 173, "summary_verified", "https://www.16score.com/bgmi-series/bgis-2026/points-table"),
-            (2026, "BMPS", "BMPS 2026", "13th", 18, 1, 65, 30, 95, "summary_verified", "https://esportstats.in/tournaments/BMPS2026"),
+            # BMPS 2026 sources disagree on SouL finishes/total (65/95 vs 66/96); exclude from verified aggregate pending reconciliation.
+            (2026, "BMPS", "BMPS 2026", "13th", 18, 1, 65, 30, 95, "source_discrepancy", "https://esportstats.in/tournaments/BMPS2026"),
             (2026, "BMSD", "BMSD 2026", "1st", 18, 2, 103, 52, 155, "summary_verified", "https://esportsamaze.com/bgmi/tournaments/battlegrounds-mobile-india-showdown-2026/standings"),
             (2026, "BMIC", "BMIC 2026", "12th", 18, 0, 69, 18, 87, "summary_verified", "https://www.talkesport.com/wiki/bgmi/bmic/2026/")
         ]
