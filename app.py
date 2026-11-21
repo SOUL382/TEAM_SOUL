@@ -494,10 +494,29 @@ def results_api():
             exists = db.execute("SELECT id FROM tournaments WHERE id=?", (tid,)).fetchone()
             if not exists:
                 return error("Tournament not found", 404)
-            cur = db.execute("""INSERT INTO results
-              (tournament_id,match_number,map_name,team_name,placement,kills,placement_points,bonus_points,bonus_details)
-              VALUES(?,?,?,?,?,?,?,?,?)""", (tid,match,map_name,team_name,placement,kills,pp,bonus,bonus_details))
-        return jsonify({"id": cur.lastrowid, "total_points": kills + pp + bonus}), 201
+            registered_team = db.execute(
+                "SELECT id FROM teams WHERE tournament_id=? AND name=? COLLATE NOCASE",
+                (tid, team_name)
+            ).fetchone()
+            if not registered_team:
+                return error("Register this team in the tournament before saving its score", 400)
+            existing_result = db.execute(
+                "SELECT id FROM results WHERE tournament_id=? AND match_number=? AND team_name=? COLLATE NOCASE ORDER BY id LIMIT 1",
+                (tid, match, team_name)
+            ).fetchone()
+            if existing_result:
+                result_id = existing_result["id"]
+                db.execute("""UPDATE results SET map_name=?,placement=?,kills=?,
+                    placement_points=?,bonus_points=?,bonus_details=? WHERE id=?""",
+                    (map_name, placement, kills, pp, bonus, bonus_details, result_id))
+                status_code = 200
+            else:
+                cur = db.execute("""INSERT INTO results
+                  (tournament_id,match_number,map_name,team_name,placement,kills,placement_points,bonus_points,bonus_details)
+                  VALUES(?,?,?,?,?,?,?,?,?)""", (tid,match,map_name,team_name,placement,kills,pp,bonus,bonus_details))
+                result_id = cur.lastrowid
+                status_code = 201
+        return jsonify({"id": result_id, "total_points": kills + pp + bonus, "updated": status_code == 200}), status_code
     except (KeyError, ValueError, TypeError):
         return error("All score fields must be valid numbers and text")
 
@@ -622,7 +641,7 @@ def group_qualification():
         return error("tournament_id is required")
     with connect_db() as db:
         tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
-        if not tournament or "Group" not in tournament["name"]:
+        if not tournament or not public_tournament_visible(db, tid) or "Group" not in tournament["name"]:
             return error("This tracker is only available for Red and Green Groups", 400)
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
@@ -677,7 +696,7 @@ def last_chance_qualification():
         return error("tournament_id is required")
     with connect_db() as db:
         tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
-        if not tournament or "Last Chance" not in tournament["name"]:
+        if not tournament or not public_tournament_visible(db, tid) or "Last Chance" not in tournament["name"]:
             return error("This tracker is only available for the Last Chance stage", 400)
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
@@ -833,7 +852,7 @@ def grand_finals_map_selection():
         return error("tournament_id is required")
     with connect_db() as db:
         tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
-        if not tournament or tournament["name"] != "PMGC 2026 - Grand Finals":
+        if not tournament or not public_tournament_visible(db, tid) or tournament["name"] != "PMGC 2026 - Grand Finals":
             return error("This tracker is only available for Grand Finals", 400)
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
@@ -1004,6 +1023,10 @@ def manage_result(result_id):
                 allowed[key] = int(data[key])
         if "bonus_details" in data:
             allowed["bonus_details"] = str(data["bonus_details"]).strip()
+        if "map_name" in data:
+            allowed["map_name"] = str(data["map_name"]).strip()
+            if not allowed["map_name"]:
+                return error("Map name cannot be blank")
     except (TypeError, ValueError):
         return error("Score values must be valid numbers")
     if not allowed:
