@@ -924,11 +924,11 @@ def grand_finals_map_selection():
             banned = str(data.get("banned_map", "")).strip()
             selected = str(data.get("selected_map", "")).strip()
             if not winner or not banned or not selected:
-                return error("Enter the Showmatch winner, banned map and Match 19 selected map")
+                return error("Enter the SUPREMACY match winner, banned map and Final Circle selected map")
             if winner.casefold() not in registered:
-                return error("Showmatch winner must be one of the registered Grand Finals teams")
+                return error("SUPREMACY match winner must be one of the registered Grand Finals teams")
             if banned.casefold() == selected.casefold():
-                return error("The Match 19 map cannot be the map banned by the Showmatch winner")
+                return error("The Final Circle map cannot be the map banned by the SUPREMACY match winner")
             db.execute("""
                 INSERT INTO grand_finals_map_selection
                     (tournament_id,showmatch_winner,banned_map,selected_map,updated_at)
