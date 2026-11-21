@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Team SouL | PMGC Grand Finals Match History</title>
+<meta name="description" content="Explore Team SouL match-by-match PMGC Grand Finals history, placements, kills and points in this independent BGMI esports tracker.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://team-soul-qzgq.onrender.com/grand-finals-history">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Team SouL">
+<meta property="og:title" content="Team SouL | PMGC Grand Finals Match History">
+<meta property="og:description" content="Team SouL PMGC Grand Finals match-by-match history, placements, kills and points.">
+<meta property="og:url" content="https://team-soul-qzgq.onrender.com/grand-finals-history">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/"><img class="brand-logo" src="/static/images/teams/61px-Team_Soul_2019_allmode.png" alt="Team SouL logo"><span>TEAM <b>SOUL</b><small>BGMI ESPORTS TRACKER</small></span></a>
+  <nav><a href="/">Home</a><a href="/#match-centre">Match Centre</a><a href="/admin">Admin</a></nav>
+</header>
+<main>
+  <section class="section" style="margin-top:38px">
+    <div class="section-head">
+      <div><div class="eyebrow">PMGC 2026 · GRAND FINALS</div><h2>Team SouL · Match History 💚💙</h2></div>
+      <a class="history-jump" href="/#match-centre">← BACK TO MATCH CENTRE</a>
+    </div>
+    <p class="note">Up to 19 matches · 18 regular matches plus The Final Circle if required. Includes map, placement, kills, placement points, bonus points, match points and running total.</p>
+    <div id="finalsHistoryStatus" class="result-card"><p class="muted">Loading Team SouL’s Grand Finals history…</p></div>
+    <div id="soulFinalsHistory" class="table-wrap" style="margin-top:14px"><div class="empty">Loading match history…</div></div>
+    <p id="finalsHistoryCount" class="muted soul-history-note"></p>
+  </section>
+</main>
+<footer>Independent community tracker · Not affiliated with Team SouL or KRAFTON.</footer>
+<script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(url){const r=await fetch(url);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'Request failed');return d}
+async function loadFinalsHistory(){
+ const status=document.getElementById('finalsHistoryStatus');
+ const table=document.getElementById('soulFinalsHistory');
+ const count=document.getElementById('finalsHistoryCount');
+ try{
+  const tournaments=await api('/api/tournaments');
+  const finals=tournaments.find(t=>t.name==='PMGC 2026 - Grand Finals');
+  if(!finals){status.innerHTML='<p class="muted">The PMGC 2026 - Grand Finals tournament has not been created yet.</p>';table.innerHTML='<div class="empty">Grand Finals history will appear here once the tournament is available.</div>';return}
+  const results=await api('/api/results?tournament_id='+finals.id);
+  const soul=results.filter(r=>String(r.team_name).toLowerCase()==='team soul');
+  let runningTotal=0;
+  const rows=[];
+  for(let n=1;n<=19;n++){
+   const entry=soul.find(r=>Number(r.match_number)===n);
+   if(entry){
+    const kills=Number(entry.kills||0),placementPts=Number(entry.placement_points||0),bonusPts=Number(entry.bonus_points||0),points=kills+placementPts+bonusPts;
+    runningTotal+=points;
+    rows.push('<tr><td class="rank">'+n+'</td><td>'+esc(entry.map_name||'Map TBA')+'</td><td>#'+Number(entry.placement)+'</td><td>'+kills+'</td><td>'+placementPts+'</td><td>'+bonusPts+'</td><td class="points">'+points+'</td><td><strong>'+runningTotal+'</strong></td></tr>');
+   }else{
+    rows.push('<tr class="history-pending"><td class="rank">'+n+'</td><td>—</td><td colspan="5">Awaiting results</td><td>'+(runningTotal||'—')+'</td></tr>');
+   }
+  }
+  table.innerHTML='<table class="soul-history-table"><thead><tr><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACE PTS</th><th>BONUS PTS</th><th>MATCH PTS</th><th>RUNNING TOTAL</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
+  status.innerHTML='<div class="eyebrow">GRAND FINALS TRACKER</div><h3>'+soul.length+' / up to 19 matches recorded</h3><p class="muted">Team SouL’s match-by-match performance updates automatically whenever an admin records new results.</p>';
+  count.textContent=soul.length+' / up to 19 matches recorded for Team SouL.';
+ }catch(e){
+  status.innerHTML='<p class="muted">Could not load Grand Finals history: '+esc(e.message)+'</p>';
+  table.innerHTML='<div class="empty">Please refresh to try again.</div>';
+ }
+}
+loadFinalsHistory();
+</script>
+</body>
+</html>
