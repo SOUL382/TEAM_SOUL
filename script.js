@@ -6,7 +6,7 @@ async function loadPublicFinalsMap(ts){
  const match=$('grand-finals-schedule')?.querySelector('.finals-smash strong');
  const note=$('grand-finals-schedule')?.querySelectorAll('.note');
  if(!match)return;
- const defaultNote='Map rotation shown here follows the schedule supplied for this tracker. Match 19 map remains pending the Showmatch ban and Match 18 leader’s selection.';
+ const defaultNote='The Final Circle is conditional. Its map is confirmed after the SUPREMACY match ban and the Match 18 leader’s selection.';
  const finals=(ts||[]).find(x=>x.name==='PMGC 2026 - Grand Finals');
  if(!finals){match.textContent='Map TBA';if(note&&note.length)note[note.length-1].textContent=defaultNote;return}
  try{
@@ -14,7 +14,7 @@ async function loadPublicFinalsMap(ts){
   if(state.selection){
    const s=state.selection;
    match.textContent=s.selected_map;
-   if(note&&note.length)note[note.length-1].textContent='Match 19 map confirmed: '+s.selected_map+'. Showmatch winner: '+s.showmatch_winner+' · Map banned: '+s.banned_map+'.';
+   if(note&&note.length)note[note.length-1].textContent='Match 19 map confirmed: '+s.selected_map+'. SUPREMACY winner: '+s.showmatch_winner+' · Map banned: '+s.banned_map+'.';
   }else{
    match.textContent='Map TBA';
    if(note&&note.length)note[note.length-1].textContent=defaultNote;
@@ -34,7 +34,7 @@ async function loadSmashRule(t){
  const q=await api('/api/smash-rule?tournament_id='+t.id);
  let status='';
  if(q.champion){
-  status='<div class="eyebrow">'+(q.fallback?'19-MATCH FALLBACK':'CHAMPION CONFIRMED')+'</div><h3>🏆 '+esc(q.champion)+' are PMGC 2026 champions!</h3><p>'+(q.fallback?'No Match Point-eligible team secured a WWCD. Highest total points after Match 19 decides the champion.':'Won Match '+q.champion_match+' after reaching Match Point eligibility.')+'</p>';
+  status='<div class="eyebrow">'+(q.fallback?'FINAL CIRCLE DECIDER':'CHAMPION CONFIRMED')+'</div><h3>🏆 '+esc(q.champion)+' are PMGC 2026 champions!</h3><p>'+(q.fallback?'No eligible team secured a WWCD in the regular matches. Highest total points after The Final Circle decides the champion.':'Won Match '+q.champion_match+' after reaching Match Point eligibility.')+'</p>';
  }else if(q.threshold===null){
   status='<div class="eyebrow">MATCH POINT NOT ACTIVE</div><h3>'+q.complete_matches+' / 19 matches completed</h3><p class="muted">The threshold will be calculated after Match 12 is fully recorded.</p>';
  }else{
@@ -50,10 +50,10 @@ async function loadSmashRule(t){
   $('smashMapSelection').innerHTML='<h3>Waiting for Match 18</h3><p class="muted">'+mapState.complete_matches+' / 18 matches completed. The Match 19 map selection will appear after all 16 teams’ Match 18 results are recorded.</p>';
  }else if(mapState.selection){
   const s=mapState.selection, leader=mapState.leader_after_match_18;
-  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 19 MAP CONFIRMED</div><h3>'+esc(s.selected_map)+'</h3><p>Erangel Showmatch winner: <strong>'+esc(s.showmatch_winner)+'</strong></p><p>Map banned: <strong>'+esc(s.banned_map)+'</strong></p><p>Map selected by Match 18 leader: <strong>'+esc(leader.team_name)+'</strong></p>';
+  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 19 MAP CONFIRMED</div><h3>'+esc(s.selected_map)+'</h3><p>SUPREMACY match winner: <strong>'+esc(s.showmatch_winner)+'</strong></p><p>Map banned: <strong>'+esc(s.banned_map)+'</strong></p><p>Map selected by Match 18 leader: <strong>'+esc(leader.team_name)+'</strong></p>';
  }else{
   const leader=mapState.leader_after_match_18;
-  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after Match 18.</p><p class="muted">Waiting for the Erangel Showmatch winner, their map ban and the leader’s Match 19 map selection to be entered by an admin.</p>';
+  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after Match 18.</p><p class="muted">Waiting for the SUPREMACY match winner, their map ban and the Match 18 leader’s Final Circle map selection to be entered by an admin.</p>';
  }
 }
 
