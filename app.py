@@ -264,6 +264,14 @@ def admin_required(fn):
 def error(message, status=400):
     return jsonify({"error": message}), status
 
+def public_tournament_visible(db, tournament_id):
+    if session.get("admin"):
+        return True
+    row = db.execute(
+        "SELECT is_official FROM tournaments WHERE id=?", (tournament_id,)
+    ).fetchone()
+    return bool(row and row["is_official"])
+
 @app.route("/static/images/teams/<path:filename>")
 def team_logo_file(filename):
     return send_from_directory(os.path.join(BASE_DIR, "static", "images", "teams"), filename)
@@ -360,6 +368,8 @@ def teams_api():
         if not tid:
             return error("tournament_id is required")
         with connect_db() as db:
+            if not public_tournament_visible(db, tid):
+                return error("Tournament not found", 404)
             rows = db.execute("SELECT * FROM teams WHERE tournament_id=? ORDER BY name", (tid,)).fetchall()
         return jsonify([dict(r) for r in rows])
     data = request.get_json(silent=True) or {}
@@ -455,12 +465,15 @@ def results_api():
         return error("Admin login required", 401)
     if request.method == "GET":
         tid = request.args.get("tournament_id", type=int)
-        query = "SELECT * FROM results"
         params = []
+        if session.get("admin"):
+            query = "SELECT r.* FROM results r"
+        else:
+            query = "SELECT r.* FROM results r JOIN tournaments t ON t.id=r.tournament_id WHERE t.is_official=1"
         if tid:
-            query += " WHERE tournament_id=?"
+            query += (" AND" if " WHERE " in query else " WHERE ") + " r.tournament_id=?"
             params.append(tid)
-        query += " ORDER BY match_number DESC, placement ASC"
+        query += " ORDER BY r.match_number DESC, r.placement ASC"
         with connect_db() as db:
             rows = db.execute(query, params).fetchall()
         return jsonify([dict(r) for r in rows])
@@ -724,8 +737,10 @@ def smash_rule():
         ).fetchall()]
         if len(teams) != 16:
             return error("Grand Finals must have 16 registered teams", 400)
+        if not public_tournament_visible(db, tid):
+            return error("Tournament not found", 404)
         result_rows = db.execute("""
-            SELECT match_number, team_name, placement, kills, placement_points
+            SELECT match_number, team_name, placement, kills, placement_points, bonus_points
             FROM results WHERE tournament_id=? ORDER BY match_number, placement
         """, (tid,)).fetchall()
         by_match = {}
@@ -823,8 +838,10 @@ def grand_finals_map_selection():
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
         ).fetchall()]
+        if not public_tournament_visible(db, tid):
+            return error("Tournament not found", 404)
         rows = db.execute("""
-            SELECT match_number, team_name, placement, kills, placement_points
+            SELECT match_number, team_name, placement, kills, placement_points, bonus_points
             FROM results WHERE tournament_id=? AND match_number<=18
             ORDER BY match_number, placement
         """, (tid,)).fetchall()
@@ -931,6 +948,8 @@ def standings():
     if not tid:
         return error("tournament_id is required")
     with connect_db() as db:
+        if not public_tournament_visible(db, tid):
+            return error("Tournament not found", 404)
         rows = db.execute("""
             SELECT t.name AS team_name,
                    t.highlighted AS highlighted,
@@ -957,6 +976,8 @@ def schedule():
     if not tid:
         return error("tournament_id is required")
     with connect_db() as db:
+        if not public_tournament_visible(db, tid):
+            return error("Tournament not found", 404)
         rows = db.execute("""
             SELECT match_number, match_date, map_name, start_time_trt, start_time_ist
             FROM scheduled_matches
