@@ -379,6 +379,11 @@ def teams_api():
         players = str(data.get("players", "")).strip()
         if not name:
             return error("Team name is required")
+        if players:
+            player_names = [value.strip() for value in players.split(",") if value.strip()]
+            if len(player_names) != 4 or len({value.casefold() for value in player_names}) != 4:
+                return error("Enter exactly four different player names, separated by commas")
+            players = ", ".join(player_names)
         with connect_db() as db:
             cur = db.execute("INSERT INTO teams(tournament_id,name,players) VALUES(?,?,?)", (tid, name, players))
         return jsonify({"id": cur.lastrowid, "name": name}), 201
@@ -408,6 +413,11 @@ def bulk_add_teams():
             elif isinstance(item, dict):
                 name = str(item.get("name", "")).strip()
                 players = str(item.get("players", "")).strip()
+                if players:
+                    player_names = [value.strip() for value in players.split(",") if value.strip()]
+                    if len(player_names) != 4 or len({value.casefold() for value in player_names}) != 4:
+                        return error("Enter exactly four different player names for " + (name or "each team"))
+                    players = ", ".join(player_names)
             else:
                 continue
             if not name:
@@ -436,6 +446,13 @@ def update_team(team_id):
         return error("No team fields supplied")
     if "highlighted" in allowed:
         allowed["highlighted"] = 1 if allowed["highlighted"] else 0
+    if "players" in allowed:
+        allowed["players"] = str(allowed["players"] or "").strip()
+        if allowed["players"]:
+            player_names = [value.strip() for value in allowed["players"].split(",") if value.strip()]
+            if len(player_names) != 4 or len({value.casefold() for value in player_names}) != 4:
+                return error("Enter exactly four different player names, separated by commas")
+            allowed["players"] = ", ".join(player_names)
     if "name" in allowed:
         allowed["name"] = str(allowed["name"]).strip()
         if not allowed["name"]:
