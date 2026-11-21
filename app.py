@@ -1089,7 +1089,7 @@ def manage_result(result_id):
         if duplicate_placement:
             return error("Another team already has that placement in this match", 400)
         cur = db.execute(
-            "UPDATE results SET " + ", ".join(f"{k}=? " for k in allowed).rstrip() + " WHERE id=?",
+            "UPDATE results SET " + ", ".join(f"{k}=?" for k in allowed) + " WHERE id=?",
             (*allowed.values(), result_id)
         )
         if not cur.rowcount:
