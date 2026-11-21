@@ -58,8 +58,8 @@ async function loadFinalsHistory(){
    }
   }
   table.innerHTML='<table class="soul-history-table"><thead><tr><th>MATCH</th><th>MAP</th><th>PLACE</th><th>KILLS</th><th>PLACE PTS</th><th>BONUS PTS</th><th>MATCH PTS</th><th>RUNNING TOTAL</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>';
-  status.innerHTML='<div class="eyebrow">GRAND FINALS TRACKER</div><h3>'+soul.length+' / 19 matches recorded</h3><p class="muted">Team SouL’s match-by-match performance updates automatically whenever an admin records new results.</p>';
-  count.textContent=soul.length+' / 19 matches recorded for Team SouL.';
+  status.innerHTML='<div class="eyebrow">GRAND FINALS TRACKER</div><h3>'+soul.length+' / up to 19 matches recorded</h3><p class="muted">Team SouL’s match-by-match performance updates automatically whenever an admin records new results.</p>';
+  count.textContent=soul.length+' / up to 19 matches recorded for Team SouL.';
  }catch(e){
   status.innerHTML='<p class="muted">Could not load Grand Finals history: '+esc(e.message)+'</p>';
   table.innerHTML='<div class="empty">Please refresh to try again.</div>';
