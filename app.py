@@ -506,6 +506,10 @@ def results_api():
             ).fetchone()
             if existing_result:
                 result_id = existing_result["id"]
+                db.execute(
+                    "DELETE FROM results WHERE tournament_id=? AND match_number=? AND team_name=? COLLATE NOCASE AND id<>?",
+                    (tid, match, team_name, result_id)
+                )
                 db.execute("""UPDATE results SET map_name=?,placement=?,kills=?,
                     placement_points=?,bonus_points=?,bonus_details=? WHERE id=?""",
                     (map_name, placement, kills, pp, bonus, bonus_details, result_id))
@@ -593,6 +597,8 @@ def qualification():
     if not tid:
         return error("tournament_id is required")
     with connect_db() as db:
+        if not public_tournament_visible(db, tid):
+            return error("Tournament not found", 404)
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
         ).fetchall()]
