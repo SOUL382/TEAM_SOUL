@@ -755,15 +755,13 @@ def smash_rule():
         return error("tournament_id is required")
     with connect_db() as db:
         tournament = db.execute("SELECT name FROM tournaments WHERE id=?", (tid,)).fetchone()
-        if not tournament or "Grand Finals" not in tournament["name"]:
+        if not tournament or not public_tournament_visible(db, tid) or "Grand Finals" not in tournament["name"]:
             return error("This tracker is only available for Grand Finals", 400)
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
         ).fetchall()]
         if len(teams) != 16:
             return error("Grand Finals must have 16 registered teams", 400)
-        if not public_tournament_visible(db, tid):
-            return error("Tournament not found", 404)
         result_rows = db.execute("""
             SELECT match_number, team_name, placement, kills, placement_points, bonus_points
             FROM results WHERE tournament_id=? ORDER BY match_number, placement
@@ -863,8 +861,6 @@ def grand_finals_map_selection():
         teams = [r["name"] for r in db.execute(
             "SELECT name FROM teams WHERE tournament_id=? ORDER BY name", (tid,)
         ).fetchall()]
-        if not public_tournament_visible(db, tid):
-            return error("Tournament not found", 404)
         rows = db.execute("""
             SELECT match_number, team_name, placement, kills, placement_points, bonus_points
             FROM results WHERE tournament_id=? AND match_number<=18
