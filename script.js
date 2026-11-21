@@ -36,9 +36,9 @@ async function loadSmashRule(t){
  if(q.champion){
   status='<div class="eyebrow">'+(q.fallback?'FINAL CIRCLE DECIDER':'CHAMPION CONFIRMED')+'</div><h3>🏆 '+esc(q.champion)+' are PMGC 2026 champions!</h3><p>'+(q.fallback?'No eligible team secured a WWCD in the regular matches. Highest total points after The Final Circle decides the champion.':'Won Match '+q.champion_match+' after reaching Match Point eligibility.')+'</p>';
  }else if(q.threshold===null){
-  status='<div class="eyebrow">MATCH POINT NOT ACTIVE</div><h3>'+q.complete_matches+' / 19 matches completed</h3><p class="muted">The threshold will be calculated after Match 12 is fully recorded.</p>';
+  status='<div class="eyebrow">MATCH POINT NOT ACTIVE</div><h3>'+q.complete_matches+' matches completed (up to 19)</h3><p class="muted">The threshold will be calculated after Match 12 is fully recorded.</p>';
  }else{
-  status='<div class="eyebrow">MATCH POINT ACTIVE</div><h3>Threshold: '+q.threshold+' points</h3><p class="muted">'+q.complete_matches+' / 19 matches completed. Teams reaching '+q.threshold+' points become eligible from the following match. The first eligible team to win a WWCD becomes champion.</p>';
+  status='<div class="eyebrow">MATCH POINT ACTIVE</div><h3>Threshold: '+q.threshold+' points</h3><p class="muted">'+q.complete_matches+' matches completed (up to 19). Teams reaching '+q.threshold+' points become eligible from the following match. The first eligible team to win a WWCD becomes champion.</p>';
  }
  $('smashStatus').innerHTML=status+'<p class="muted">Match Point threshold = leading team’s total after Match 12 + 10. Tiebreaker: '+esc(q.tiebreaker)+'.</p>';
  if(q.champion){$('smashEligible').innerHTML='';}
@@ -50,7 +50,7 @@ async function loadSmashRule(t){
   $('smashMapSelection').innerHTML='<h3>Waiting for Match 18</h3><p class="muted">'+mapState.complete_matches+' / 18 matches completed. The Match 19 map selection will appear after all 16 teams’ Match 18 results are recorded.</p>';
  }else if(mapState.selection){
   const s=mapState.selection, leader=mapState.leader_after_match_18;
-  $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 19 MAP CONFIRMED</div><h3>'+esc(s.selected_map)+'</h3><p>SUPREMACY match winner: <strong>'+esc(s.showmatch_winner)+'</strong></p><p>Map banned: <strong>'+esc(s.banned_map)+'</strong></p><p>Map selected by Match 18 leader: <strong>'+esc(leader.team_name)+'</strong></p>';
+  $('smashMapSelection').innerHTML='<div class="eyebrow">FINAL CIRCLE MAP CONFIRMED</div><h3>'+esc(s.selected_map)+'</h3><p>SUPREMACY match winner: <strong>'+esc(s.showmatch_winner)+'</strong></p><p>Map banned: <strong>'+esc(s.banned_map)+'</strong></p><p>Map selected by Match 18 leader: <strong>'+esc(leader.team_name)+'</strong></p>';
  }else{
   const leader=mapState.leader_after_match_18;
   $('smashMapSelection').innerHTML='<div class="eyebrow">MATCH 18 LEADER · MAP PICKER</div><h3>'+esc(leader.team_name)+'</h3><p>'+leader.total_points+' points after Match 18.</p><p class="muted">Waiting for the SUPREMACY match winner, their map ban and the Match 18 leader’s Final Circle map selection to be entered by an admin.</p>';
