@@ -48,7 +48,7 @@
 </section>
 <section class="section">
 <div class="section-head"><div><div class="eyebrow">OFFICIAL HISTORY · 2025–2026</div><h2>Team SouL championship record</h2></div></div>
-<p class="muted">Verified final placements and published tournament totals. The summary below adds only verified event-stage totals; individual match rows are shown separately only when scorecards are available.</p>
+<p class="muted">Verified final placements and published tournament totals. The summary adds only reconciled event-stage totals. Conflicting published scores remain visible for transparency but are excluded from career totals until resolved; individual match rows are shown separately only when scorecards are available.</p>
 <div id="officialSummary" class="stats-grid"></div>
 <div class="table-wrap" id="officialHistory"><div class="stats-empty">Loading official tournament history…</div></div>
 </section>
@@ -114,7 +114,7 @@ async function loadOfficialHistory(){
    card('Total published points',totals.points)
   ].join('');
   target.innerHTML='<table class="stats-table"><thead><tr><th>YEAR</th><th>EVENT</th><th>PLACEMENT / STAGE</th><th>MATCHES</th><th>WWCD</th><th>FINISHES</th><th>PLACEMENT PTS</th><th>TOTAL PTS</th><th>DATA</th></tr></thead><tbody>'+
-   rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.event_name)+'</td><td>'+esc(r.final_placement)+'</td><td>'+(r.matches??'—')+'</td><td>'+(r.wwcd??'—')+'</td><td>'+(r.finishes??'—')+'</td><td>'+(r.placement_points??'—')+'</td><td>'+(r.total_points??'—')+'</td><td><a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">Source</a> · '+(r.data_status==='summary_verified'?'Totals verified':'Placement verified')+'</td></tr>').join('')+
+   rows.map(r=>'<tr><td>'+r.year+'</td><td>'+esc(r.event_name)+'</td><td>'+esc(r.final_placement)+'</td><td>'+(r.matches??'—')+'</td><td>'+(r.wwcd??'—')+'</td><td>'+(r.finishes??'—')+'</td><td>'+(r.placement_points??'—')+'</td><td>'+(r.total_points??'—')+'</td><td><a href="'+esc(r.source_url)+'" target="_blank" rel="noopener">Source</a> · '+(r.data_status==='summary_verified'?'Totals verified':r.data_status==='source_discrepancy'?'Score discrepancy · excluded from totals':'Placement verified')+(r.data_status==='source_discrepancy'?' · <a href="https://oowls.in/esports/bmps-2026" target="_blank" rel="noopener">alternate source: 96 pts</a>':'')+'</td></tr>').join('')+
    '</tbody></table>';
  }catch(e){target.innerHTML='<div class="stats-empty">Could not load official history: '+esc(e.message)+'</div>'}
 }
