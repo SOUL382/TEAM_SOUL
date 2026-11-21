@@ -517,6 +517,17 @@ def results_api():
             ).fetchone()
             if not registered_team:
                 return error("Register this team in the tournament before saving its score", 400)
+            team_count = db.execute(
+                "SELECT COUNT(*) FROM teams WHERE tournament_id=?", (tid,)
+            ).fetchone()[0]
+            if placement > team_count:
+                return error("Placement cannot exceed the number of registered teams", 400)
+            duplicate_placement = db.execute(
+                "SELECT id FROM results WHERE tournament_id=? AND match_number=? AND placement=? AND team_name<>? COLLATE NOCASE LIMIT 1",
+                (tid, match, placement, team_name)
+            ).fetchone()
+            if duplicate_placement:
+                return error("Another team already has that placement in this match", 400)
             existing_result = db.execute(
                 "SELECT id FROM results WHERE tournament_id=? AND match_number=? AND team_name=? COLLATE NOCASE ORDER BY id LIMIT 1",
                 (tid, match, team_name)
@@ -1057,8 +1068,28 @@ def manage_result(result_id):
         allowed.get("bonus_points", 0) < 0):
         return error("Invalid score values")
     with connect_db() as db:
+        current = db.execute(
+            "SELECT tournament_id,match_number,team_name,placement FROM results WHERE id=?",
+            (result_id,)
+        ).fetchone()
+        if not current:
+            return error("Result not found", 404)
+        target_match = allowed.get("match_number", current["match_number"])
+        target_placement = allowed.get("placement", current["placement"])
+        team_count = db.execute(
+            "SELECT COUNT(*) FROM teams WHERE tournament_id=?",
+            (current["tournament_id"],)
+        ).fetchone()[0]
+        if target_placement > team_count:
+            return error("Placement cannot exceed the number of registered teams", 400)
+        duplicate_placement = db.execute(
+            "SELECT id FROM results WHERE tournament_id=? AND match_number=? AND placement=? AND team_name<>? COLLATE NOCASE AND id<>? LIMIT 1",
+            (current["tournament_id"], target_match, target_placement, current["team_name"], result_id)
+        ).fetchone()
+        if duplicate_placement:
+            return error("Another team already has that placement in this match", 400)
         cur = db.execute(
-            "UPDATE results SET " + ", ".join(f"{k}=?" for k in allowed) + " WHERE id=?",
+            "UPDATE results SET " + ", ".join(f"{k}=? " for k in allowed).rstrip() + " WHERE id=?",
             (*allowed.values(), result_id)
         )
         if not cur.rowcount:
