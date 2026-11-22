@@ -109,6 +109,15 @@ async function loadTeamDirectory(){
   'Dplus KIA':'150px-Dplus_darkmode.png',
   'ULF Esports':'102px-ULF_Esports_darkmode.png'
  };
+ const rosterData={
+  'Team SouL':{
+   players:['NakuL','Goblin','LEGIT','Jokerr','Thunder']
+  },
+  '4Thrives':{
+   players:['IQ','FALAK','Nocki','T24 OP','HUZAIFA'],
+   staff:[{role:'Analyst & Manager',name:'Shaheen'}]
+  }
+ };
  const base='/static/images/teams/';
  const logoCount=Object.keys(logoFiles).length;
  meta.textContent=teams.length+' teams · '+logoCount+' team logos connected · 32 × 32 px';
@@ -117,7 +126,9 @@ async function loadTeamDirectory(){
   const visual=file
    ?'<img class="team-directory-logo" src="'+base+encodeURIComponent(file).replace(/%2F/g,'/')+'" alt="'+esc(name)+' logo" loading="lazy">'
    :'<span class="team-directory-mark">'+esc(name.slice(0,1))+'</span>';
-  return '<article class="team-directory-card">'+visual+'<strong>'+esc(name)+'</strong></article>';
+  const roster=rosterData[name];
+  const rosterPanel=roster?'<details class="team-roster"><summary aria-label="View '+esc(name)+' roster and staff"><span>ROSTER &amp; STAFF</span><span class="roster-arrow" aria-hidden="true">⌄</span></summary><div class="team-roster-panel"><div class="roster-label">PLAYERS</div><ul>'+roster.players.map(p=>'<li>'+esc(p)+'</li>').join('')+'</ul>'+(roster.staff&&roster.staff.length?'<div class="roster-label">STAFF</div><ul>'+roster.staff.map(p=>'<li><span>'+esc(p.name)+'</span><small>'+esc(p.role)+'</small></li>').join('')+'</ul>':'')+'</div></details>':'';
+  return '<article class="team-directory-card">'+visual+'<strong>'+esc(name)+'</strong>'+rosterPanel+'</article>';
  }).join('');
 }
 
