@@ -216,3 +216,17 @@ html{scroll-behavior:smooth}
   .hero p{max-width:82%}
   .match-centre-summary{grid-template-columns:1fr}
 }
+
+
+/* Verified PMGC roster dropdowns */
+.team-directory-card{flex-wrap:wrap}
+.team-roster{flex:0 0 100%;margin-top:2px;border-top:1px solid var(--line);padding-top:7px}
+.team-roster summary{display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;list-style:none;color:var(--muted);font-size:9px;font-weight:800;letter-spacing:1.2px;min-height:25px}
+.team-roster summary::-webkit-details-marker{display:none}
+.roster-arrow{font-size:16px;line-height:1;color:var(--lime);transition:transform .18s}
+.team-roster[open] .roster-arrow{transform:rotate(180deg)}
+.team-roster-panel{padding:7px 2px 2px;color:#dce4e9;font-size:11px}
+.roster-label{margin:6px 0 4px;color:var(--lime);font-size:9px;font-weight:900;letter-spacing:1.4px}
+.team-roster-panel ul{list-style:none;padding:0;margin:0;display:grid;gap:5px}
+.team-roster-panel li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 7px;background:#0b121a;border-radius:4px}
+.team-roster-panel li small{color:var(--muted);font-size:9px;text-align:right}
