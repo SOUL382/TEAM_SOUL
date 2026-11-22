@@ -111,11 +111,19 @@ async function loadTeamDirectory(){
  };
  const rosterData={
   'Team SouL':{
-   players:['NakuL','Goblin','LEGIT','Jokerr','Thunder']
+   players:['NakuL','Goblin','LEGIT','Jokerr','Thunder'],
+   staff:[
+    {role:'Coach · Not travelling with the team for PMGC 2026',name:'Ayogi'},
+    {role:'Manager',name:'SID'}
+   ]
   },
   '4Thrives':{
    players:['IQ','FALAK','Nocki','T24 OP','HUZAIFA'],
    staff:[{role:'Analyst & Manager',name:'Shaheen'}]
+  },
+  'eArena':{
+   players:['Jowker','MORMAN','TernyK','SchwepXz'],
+   staff:[{role:'Coach',name:'Rvenclaw'}]
   }
  };
  const base='/static/images/teams/';
